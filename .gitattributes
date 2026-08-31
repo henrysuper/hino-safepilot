@@ -1,0 +1,28 @@
+# Normalize text files in the repository
+* text=auto
+
+# Source / config / documentation
+*.py    text eol=lf
+*.js    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+*.txt   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Windows scripts
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Binary files
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.pdf   binary
+*.xlsx  binary
+*.parquet binary
+*.joblib binary

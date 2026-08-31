@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SafePilot hackathon local prototype viewer" />
+    <title>HINO SafePilot — Local Prototype</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">SP</span>
+          <div>
+            <p class="eyebrow">Hackathon Prototype · Local Demo</p>
+            <h1>HINO SafePilot</h1>
+            <p class="subtitle">AI 安全駕駛教練 Prototype</p>
+          </div>
+        </div>
+        <div class="system-chip"><span class="status-dot"></span>Local · Privacy First</div>
+      </header>
+
+      <nav class="stage-nav" aria-label="SafePilot 三階段導覽">
+        <button class="stage-button active" data-view="predrive" aria-selected="true">
+          <span class="stage-number">01</span><span>行前目標</span>
+        </button>
+        <button class="stage-button" data-view="driving" aria-selected="false">
+          <span class="stage-number">02</span><span>行駛中 60 秒風險</span>
+        </button>
+        <button class="stage-button" data-view="postdrive" aria-selected="false">
+          <span class="stage-number">03</span><span>行後報告</span>
+        </button>
+      </nav>
+
+      <main>
+        <div id="global-error" class="error-panel hidden" role="alert">
+          <strong>資料暫時無法取得</strong>
+          <span>請確認 localhost server 與 synthetic JSON 是否可讀取。</span>
+        </div>
+
+        <section id="predrive-view" class="view active" aria-labelledby="predrive-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">今天，只專注改善一件事</h2></div>
+            <span class="contract-chip">Deterministic Goal</span>
+          </div>
+          <div class="hero-grid">
+            <article class="goal-card accent-card">
+              <p class="card-label">今日改善目標</p>
+              <div class="goal-title-row"><span id="goal-icon" class="metric-icon">↓</span><h3 id="goal-title">—</h3></div>
+              <p id="goal-message" class="lead-copy">資料載入中…</p>
+              <div class="priority-row"><span>優先分數</span><strong id="goal-priority">—</strong></div>
+              <div class="progress-track"><span id="goal-progress"></span></div>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">行為基線比較</p>
+              <div class="comparison-number"><strong id="goal-change">—</strong><span>相較近期基線</span></div>
+              <div class="comparison-grid">
+                <div><span>近期</span><strong id="goal-recent">—</strong></div>
+                <div><span>基線</span><strong id="goal-baseline">—</strong></div>
+              </div>
+              <p id="goal-unit" class="microcopy">—</p>
+            </article>
+          </div>
+          <article class="action-strip"><span class="action-index">ACTION</span><p id="goal-action">—</p></article>
+        </section>
+
+        <section id="driving-view" class="view" aria-labelledby="driving-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">During the trip</p><h2 id="driving-title">未來 60 秒風險契約預覽</h2></div>
+            <span class="contract-chip warning">Offline Experiment</span>
+          </div>
+          <div class="model-disclosure">
+            <div><span class="status-dot amber"></span><strong>Model Status: XGBoost Experiment Ready · Not Production</strong></div>
+            <p>Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。</p>
+          </div>
+          <div class="driving-grid">
+            <article class="risk-dial-card">
+              <span class="simulation-badge">Synthetic Demo</span>
+              <div class="risk-dial" id="risk-dial"><div><strong id="risk-score">—</strong><span>模擬機率</span></div></div>
+              <h3 id="risk-level">—</h3>
+              <p id="risk-event">—</p>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">Prediction Contract Preview</p>
+              <dl class="contract-list">
+                <div><dt>預測 horizon</dt><dd id="risk-horizon">—</dd></div>
+                <div><dt>模型版本</dt><dd id="risk-model">—</dd></div>
+                <div><dt>候選 label</dt><dd id="risk-label">—</dd></div>
+                <div><dt>Anchor cadence</dt><dd id="risk-cadence">—</dd></div>
+              </dl>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">Known Holdout · Aggregate</p>
+              <dl class="contract-list">
+                <div><dt>XGB / Logistic PR-AUC</dt><dd>0.526 / 0.491</dd></div>
+                <div><dt>XGB Recall / Precision</dt><dd>0.313 / 0.604</dd></div>
+                <div><dt>V1 false alerts/hour</dt><dd>3.12</dd></div>
+                <div><dt>狀態</dt><dd>Known benchmark only</dd></div>
+              </dl>
+            </article>
+          </div>
+          <article class="factor-panel"><p class="card-label">模擬 top factors</p><div id="risk-factors" class="factor-list"></div></article>
+          <article class="factor-panel"><p class="card-label">Alert Policy V1 · Synthetic Timeline</p><div id="alert-timeline" class="alert-timeline"></div></article>
+          <p class="microcopy">Threshold、cooldown、escalation 與 hysteresis 皆為 experimental prototype，尚未經 HINO／domain expert 核准；本頁不執行模型推論。</p>
+        </section>
+
+        <section id="postdrive-view" class="view" aria-labelledby="postdrive-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">After the trip</p><h2 id="postdrive-title">把每趟行程變成下一次進步</h2></div>
+            <span class="contract-chip">Post-trip Analytics</span>
+          </div>
+          <div id="trip-metrics" class="metric-cards"></div>
+          <div class="report-grid">
+            <article class="event-card">
+              <p class="card-label">行為事件摘要</p>
+              <div id="event-list" class="event-list"></div>
+              <div class="behavior-pair">
+                <div><span>相對較佳</span><strong id="trip-strength">—</strong></div>
+                <div><span>優先改善</span><strong id="trip-weakness">—</strong></div>
+              </div>
+            </article>
+            <article class="ai-report-card accent-card">
+              <p class="card-label">AI 行程摘要 · Synthetic</p>
+              <blockquote id="ai-summary">資料載入中…</blockquote>
+              <div class="next-focus"><span>NEXT FOCUS</span><strong id="next-focus">—</strong></div>
+            </article>
+          </div>
+          <article class="context-card"><p class="card-label">值得留意的事件脈絡</p><div id="event-context">—</div></article>
+        </section>
+      </main>
+
+      <footer><span>SafePilot · 2026 Hackathon Prototype</span><span>Not an official HINO product</span></footer>
+    </div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

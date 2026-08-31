@@ -2,7 +2,7 @@
 
 ## Status and prediction task
 
-This document proposes experiments; it does not finalize a label.
+Label V0 was human-approved and materialized as Dataset `v0_hino`. Phase 3C-1 has trained and frozen the first HINO-only Logistic Regression offline baseline; it is not a production alert model.
 
 For an anchor time `t`, use HINO information from approximately the prior five minutes to predict whether a **new** high-risk event onset will occur in the next 60 seconds:
 
@@ -12,7 +12,7 @@ For an anchor time `t`, use HINO information from approximately the prior five m
 - inference unit: one vehicle at one anchor time;
 - output candidates: multi-label per event type, an any-high-risk binary probability, or both.
 
-The left-closed/right-open input deliberately excludes the row at `t` until event timestamp semantics are settled. The workbook frequently exposes an event on the same telemetry row as its `startTime`, and also repeats an active event after its onset. Including those event fields would reveal the answer.
+The left-closed/right-open input deliberately excludes the row at `t`. The workbook frequently exposes an event on the same telemetry row as its `startTime`, and also repeats active/completion observations after onset. Including those event fields would reveal the answer. The label interval is strictly open at `t` and closed at `t+60s`.
 
 ## Observed constraints
 
@@ -59,11 +59,25 @@ Create a positive episode when at least two reviewed risks overlap or begin with
 
 ### Censoring and negatives
 
-- Anchors with less than 300 seconds of usable history are excluded or marked insufficient-history according to a reviewed rule.
-- Anchors within 60 seconds of journey end are censored unless full future observation is available.
-- A currently active instance of the target class is not a new-onset positive; whether to exclude such anchors or retain them as negatives is `UNRESOLVED`.
+- Phase 3A recommends at least 240 elapsed seconds, at least 10 observations, and a maximum 60-second history gap; all thresholds still require approval.
+- Anchors whose journey ends before `t+60s` are censored. The candidate reference also requires at least one telemetry observation in `(t,t+60s]`; otherwise the anchor is ambiguous, not negative.
+- A currently active instance of a target class is not a new-onset positive. Phase 3A recommends excluding anchors with an observed active interval; a post-onset cooldown is an alert-policy experiment, not label truth.
 - Telemetry gaps that make either window incomplete require an explicit completeness rule.
 - Events with unparseable time or ambiguous duplicates are quarantined, not silently reassigned.
+
+## Phase 3A empirical label recommendation
+
+The aggregate reference simulation uses a 10-second telemetry-aligned cadence, V0 Core Any Risk, the combined history requirement above, active-state exclusion, full future observation, and quarantine/exclusion rules documented in `docs/label_design.md`.
+
+- 209,154 eligible anchors, 53,812 positive and 155,342 negative;
+- V0 prevalence 25.73% and negative/positive ratio 2.89:1;
+- 9,276 censored and 99 ambiguous anchors, neither treated as negative;
+- all 20 vehicles represented among positives;
+- PCS has only 119 positive anchors and 42 trusted onsets and is insufficient for a standalone claim;
+- V1 keeps the same truth as five class indicators plus `any_risk`;
+- V2 remains experimental because sustained-speeding threshold and observable onset are unresolved.
+
+These are correlated anchor counts, not independent event counts. The recommendation is an approval candidate and is not a final label contract.
 
 ## Feature groups
 
@@ -98,6 +112,7 @@ Historical traffic, weather, and disaster features require the same historical t
 |---|---|---|
 | Future leakage | `event.endTime`, duration, future max speed, centered smoothing | Enforce event-time feature cutoffs and test every feature dependency. |
 | Current-event leakage | event type/start appears on the row at onset | Exclude raw event slots from input; use `[t-300,t)`; derive past-event history from deduplicated starts strictly before `t`. |
+| Post-trip leakage | Phase 2.5 event context inspects the next 30 seconds | Keep `post_trip_analytics` outside all feature imports; trip summaries/goals/reports are never model inputs. |
 | Overlapping-window leakage | adjacent anchors share almost all rows | Split by whole journey first; purge/embargo at least input window plus horizon where boundaries can overlap. |
 | Journey leakage | windows from one journey appear in multiple partitions | Persist one split assignment per `(enabledCode, journeyCode)`. |
 | Vehicle leakage | same vehicle identity/behavior appears in unseen-vehicle test | Hold out complete `enabledCode` sets and remove direct identifiers. |
@@ -123,14 +138,14 @@ Historical traffic, weather, and disaster features require the same historical t
 - Assign complete journeys by journey start time: earlier journeys to train, later journeys to validation, newest journeys to test.
 - Never split a journey at a calendar boundary.
 - Add a 360-second minimum purge/embargo around any boundary where windows could share source observations; increase it if feature lookbacks exceed five minutes.
-- Freeze the newest test period before modeling. Exact dates and proportions are `UNRESOLVED` pending class-support analysis.
+- Candidate boundaries are train through 2025-08-31, validation through 2025-10-31, and test from 2025-11-01, assigned by whole-trip start. Observed support is 2,389 / 663 / 489 trips. Freeze only after label approval; PCS has only two test-period onsets and cannot support a standalone test claim.
 
 ### Vehicle holdout
 
 - Assign complete `enabledCode` sets to train, validation, and unseen-vehicle test.
 - Stratify only using training-time aggregate information and keep assignments immutable.
 - Confirm each evaluated label has support in validation and test; otherwise report it rather than moving events after seeing results.
-- Exact vehicle allocation is `UNRESOLVED`; only 20 vehicles are present, so uncertainty and repeated group folds on the development set may be needed without repeatedly inspecting the final test.
+- Exact vehicle allocation is `UNRESOLVED`. With only 20 vehicles, seal a small fixed unseen-vehicle test group after labels are frozen, then use grouped cross-validation inside the remaining development vehicles. Leave-one/few-vehicle-out is sensitivity analysis, not a reason to repeatedly inspect the final test.
 
 ### Recommended evaluation tracks
 
@@ -198,13 +213,47 @@ Consider only after calibrated out-of-sample comparison. Candidate averaging or 
 
 Suggested future configuration fields include `device=auto|cpu|cuda`, `batch_size`, `num_workers`, `precision=fp32|amp`, `seed`, feature/label/split versions, and model export format. No GPU model name belongs in training logic.
 
+## Phase 3B-1 tabular dataset contract
+
+Dataset `v0_hino` is materialized under `data/processed/ml/v0/` and is `READY`; no model was trained. Each row is one eligible existing telemetry anchor. Features use `[t-300s,t)`, labels use `(t,t+60s]`, and source-availability provenance proves every contributing telemetry/event observation was available before the anchor.
+
+The physical dataset tables contain a deterministic `anchor_id` linkage key, 163 explicitly enumerated features, and six labels. Loaders must select only `feature_columns` for `X`; `anchor_id` is never a feature. Private `trip_id`, vehicle identity, timestamps, eligibility evidence, and source-time evidence reside only in separate Git-ignored metadata/audit tables. No direct identifier, source row, latitude, longitude, or Phase 2.5 post-trip output is a model feature.
+
+The feature families are speed/dynamics (56), historical events (45), speeding observations (4), engine/vehicle state (46), exposure/history quality (11), and vehicle class (1). Nulls and quality indicators are retained; no global imputation was fitted. The full machine-readable specification is `config/features_v0.json`, with the resolved 163-column contract copied into the private output metadata.
+
+The primary whole-trip temporal assignment produced 145,177 train, 36,789 validation, and 27,183 test rows. Five anchors were purged in `[boundary-60s,boundary+300s]`. A separate target-blind SHA-256 vehicle holdout proposal selects four of twenty vehicles while covering every observed vehicle class; identities stay in a private Parquet manifest.
+
+All leakage/privacy audits and the semantic two-build comparison pass. The test split contains only three PCS-positive anchors, so PCS standalone performance remains unsupported. Constant/near-constant/overwhelmingly-missing features are reported for train-time review and were not target-selected or silently deleted.
+
 ## Human decisions required before label implementation
 
-- Final target event set and whether hard braking equals organizer event 7.
-- Multi-label versus any-risk primary product output.
+- Approve or reject candidate V0 core event set; event 7 remains `decelerate`, and equivalence to hard braking is unresolved.
+- Approve V0 any-risk as the primary baseline truth and V1 as class diagnostics, or choose another version with rationale.
 - Sustained-speeding persistence, margin, and operational onset timestamp.
 - Compound-risk definition and whether active states count.
-- Treatment of active events at anchor time, duplicate timestamps, telemetry gaps, and incomplete horizons.
-- Exact temporal dates, vehicle assignments, purge, driving-hour denominator, alert matching, alert budget, and minimum useful lead time.
+- Approve the 10-second anchor cadence, combined history policy, active-state exclusion, 60-second future-observation rule, future maximum-gap policy, timestamp quarantine, and ultra-long-trip treatment.
+- Freeze temporal dates, vehicle assignments, purge, driving-hour denominator, alert matching, alert budget, and minimum useful lead time.
+- Confirm official timezone semantics.
 - Whether raw location, vehicle series, and past event history may be used as features.
 
+## Phase 3C-1 Logistic baseline result
+
+The first evaluation package uses `preprocessing-v0-1.0`, Logistic `C=0.1`, no class weighting, raw probability, and prototype threshold 0.27. Candidate selection used January–May Train for fitting and July Train for development evaluation. The final model/preprocessor fitted full Train; calibration fitted early-September whole trips; calibration/threshold selection used later-September whole trips. November Test was opened once after the configuration digest was frozen.
+
+Frozen Test metrics are PR-AUC 0.4911, ROC-AUC 0.7577, precision 0.4380, recall 0.6344, and F1 0.5182. Raw Logistic calibration was retained because sigmoid/isotonic did not improve late-validation Brier/log loss/ECE. The 60-second cooldown alert metric is experimental; 24.63 false alert episodes/driving hour is not deployable.
+
+Vehicle-class performance and coefficients differ materially. Type 300/500/700 Test PR-AUC is 0.5626/0.3955/0.4670. This is not identity leakage, but it requires feature ablation and subgroup review before product claims. All coefficient interpretations remain associative, not causal.
+
+`BASELINE_READY` denotes reproducible offline research, successful artifact reload, passed preprocessing/privacy/test-lock audits, and a validated prediction contract. It does not authorize production warnings or establish an approved threshold.
+
+## Phase 3C-2 XGBoost result
+
+Protocol `xgb_development_protocol_v0` uses January→March, January–March→May, and January–May→July expanding folds with the existing whole-trip temporal separation. The selected target-blind FULL+Type configuration uses depth 5, eta 0.05, min-child-weight 1, subsample/column sample 0.8, alpha 0.1, lambda 5, gamma 0.1, positive-class weight 1, and 168 fixed rounds inferred from fold early stopping. Missing sensor values remain NaN; recency null is 301 seconds plus an indicator; no scaling is applied.
+
+Mean fold PR-AUC is 0.5400. FULL/REDUCED and Type/no-Type fold means lie between 0.5396 and 0.5413, so the tiny differences were treated as a 0.002 review band; late-September F1, fixed-policy burden, and Type stability then selected FULL+Type. Type PR-AUC range remains above 0.10, so review is required. Raw calibration won on late-September Brier/log-loss/ECE.
+
+The one-time November `KNOWN_HOLDOUT COMPARATIVE BENCHMARK` has XGBoost PR-AUC 0.5255 versus Logistic 0.4911. Grouped-trip bootstrap estimates a +0.0345 difference with 95% interval [0.0231, 0.0462]. At the frozen policy threshold, XGBoost precision/recall is 0.6042/0.3125, whereas Logistic is 0.4380/0.6344 at its separate frozen operating point; ranking improvement is not the same as a product operating-point win.
+
+Global SHAP is restricted to association-only reporting. The strongest families are dominated by prior-event history plus engine/dynamics signals. No SHAP result is causal, and no private identifier is explained.
+
+Alert Policy V1 is evaluated separately. It materially reduces voice/false-alert burden but also lowers event coverage. Its Pareto candidates remain experimental; there is no approved production threshold or policy winner.

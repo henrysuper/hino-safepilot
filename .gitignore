@@ -26,6 +26,8 @@ venv/
 # =========================
 __pycache__/
 *.py[cod]
+*.egg-info/
+.coverage
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -41,6 +43,11 @@ __pycache__/
 models/**/*
 !models/.gitkeep
 !models/README.md
+!models/risk/
+!models/risk/v0_logistic/
+!models/risk/v0_logistic/model_card.md
+!models/risk/v1_xgboost/
+!models/risk/v1_xgboost/model_card.md
 *.pt
 *.pth
 *.ckpt

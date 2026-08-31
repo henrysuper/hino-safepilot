@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hino-safepilot"
+version = "0.1.0"
+description = "Deterministic ETL and privacy-safe trip analytics for HINO SafePilot"
+requires-python = ">=3.12"
+dependencies = [
+  "joblib==1.5.3",
+  "narwhals==2.24.0",
+  "numpy==2.5.2",
+  "openpyxl==3.1.5",
+  "pyarrow==23.0.1",
+  "pydantic==2.13.4",
+  "scikit-learn==1.9.0",
+  "shap==0.52.0",
+  "scipy==1.18.0",
+  "threadpoolctl==3.6.0",
+  "xgboost==3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "psutil==7.2.2",
+  "pytest==9.1.1",
+]
+ai = [
+  "google-genai==1.75.0",
+]
+
+[project.scripts]
+hino-etl = "hino_safepilot.etl.cli:main"
+hino-analytics = "hino_safepilot.analytics.cli:main"
+hino-label-research = "hino_safepilot.label_research.cli:main"
+hino-dataset = "hino_safepilot.dataset.cli:main"
+hino-train-logistic = "hino_safepilot.modeling.cli:main"
+hino-train-xgboost = "hino_safepilot.modeling.xgboost_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+testpaths = ["tests"]

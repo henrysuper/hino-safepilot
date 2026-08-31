@@ -8,7 +8,7 @@ SafePilot is a driver-centered commercial-vehicle safety coach. The intended pro
 2. During driving: use approximately five minutes of telemetry to estimate whether a new high-risk event will begin in the next 60 seconds.
 3. After driving: summarize the trip, compare it with a personal baseline, explain weaknesses, and propose the next improvement goal.
 
-This repository phase covers only repository foundation, private-data audit, requirements, architecture, and ML system design. It does not implement the application or train a model.
+Repository foundation and audit were completed in Phase 1, and reproducible XLSX-to-Parquet ETL V0 was completed in Phase 2. Phase 2.5 implements deterministic trip analytics, past-only vehicle-linked behavior baselines, improvement goals, and an optional privacy-safe report-wording prototype. It does not generate ML windows or labels, split data, implement Expo, or train a model.
 
 ## MVP
 
@@ -19,6 +19,8 @@ This repository phase covers only repository foundation, private-data audit, req
 - A hardware-agnostic offline training interface and a portable CPU-capable inference artifact.
 - A deterministic alert engine that turns calibrated model risk into rate-limited warnings.
 - Deterministic pre-trip weakness selection and post-trip metrics based only on verified telemetry definitions.
+- Typed `TripSummary`, `BehaviorBaseline`, `DailyImprovementGoal`, and structured AI presentation contracts.
+- Mock-first report wording with deterministic fallback; Gemini is optional and receives only sanitized aggregates.
 
 ## Bonus / later enhancements
 
@@ -31,7 +33,7 @@ This repository phase covers only repository foundation, private-data audit, req
 ## Out of scope for this phase
 
 - Expo initialization, UI code, maps, and mobile dependencies.
-- Gemini, TDX, CWA, NCDR, or any live external API integration.
+- Live calls using real HINO-derived payloads; TDX, CWA, NCDR, and other external context.
 - Production backend endpoints.
 - Model training, deep-learning experiments, hyperparameter search, and model binary generation.
 - Claims about TPMS, accident cost, avoided accidents, or savings without supporting data and reviewed assumptions.
@@ -52,6 +54,7 @@ This repository phase covers only repository foundation, private-data audit, req
 - FR-P01: Aggregate reviewed behavior metrics over a configurable 7-30 day or N-trip lookback.
 - FR-P02: Compare with the driver's own prior baseline where driver identity is legitimately available; driver identity is currently `UNRESOLVED` in the supplied schema.
 - FR-P03: Select one improvement goal using deterministic rules and evidence, with no LLM dependency.
+- FR-P04: Label the current profile as a `vehicle-linked behavior profile`; never treat `enabledCode` as a driver identity.
 
 ### During driving
 
@@ -67,6 +70,10 @@ This repository phase covers only repository foundation, private-data audit, req
 - FR-T02: Compare a trip with an appropriate personal or vehicle baseline without cross-split or future leakage.
 - FR-T03: Keep score and weakness calculations versioned and auditable.
 - FR-T04: Treat AI narrative, PDF, and CSV export as later integrations over a deterministic report payload.
+- FR-T05: Compute cumulative mileage/fuel through guarded positive segments; flag resets, decreases, missingness, and rejected jumps.
+- FR-T06: Build event context only in the post-trip analytics boundary, where future 30-second observations are explicitly permitted.
+- FR-T07: Reject LLM payloads containing raw identifiers, source-row fields, or precise coordinates before any provider call.
+- FR-T08: Validate AI wording against versioned Pydantic schemas and fall back to deterministic rendering after bounded provider failures.
 
 ## Non-functional requirements
 
@@ -81,4 +88,6 @@ This repository phase covers only repository foundation, private-data audit, req
 - NFR-09 Testability: schema, journey assembly, cutoff semantics, window purging, metrics, calibration, and alert state transitions require automated tests before implementation is complete.
 - NFR-10 Documentation fidelity: documents must distinguish organizer-confirmed facts, observed workbook behavior, design proposals, and `UNRESOLVED` decisions.
 - NFR-11 Performance targets: online latency, memory, alert budget, and availability SLOs are `UNRESOLVED` until demo hardware and product constraints are confirmed.
-
+- NFR-12 Real-data egress: no real competition-derived payload may be sent to Gemini until a human approves a separate API policy; synthetic opt-in testing only.
+- NFR-13 Holdout honesty: November results after Phase 3C-1 must be labeled known-holdout comparative evidence; no later model may present them as an unbiased final test.
+- NFR-14 Alert separation: prediction probability and speech decisions use separate typed contracts; cooldown, escalation, and hysteresis cannot modify labels or model probabilities.
