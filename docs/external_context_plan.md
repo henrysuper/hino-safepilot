@@ -1,5 +1,11 @@
 # External Historical Context Plan
 
+## Phase 3C-4 feasibility update (2026-09-05)
+
+Official capability was rechecked, but empirical joining remains unavailable. The local workspace has no admissible historical TDX/CWA/NCDR snapshot or credentials, and HINO timestamps still have unresolved timezone semantics. GPS coverage alone is insufficient to establish safe date/time/geography overlap. No mock context was used to claim improvement.
+
+The repository now has leakage-safe temporal/spatial joins, injected TDX/CWA parsers/providers, explicit availability/freshness states, content-addressed cache support, and an L2-only voice qualification interface. Empirical rule selection and learned-gate training remain pending. See `docs/context_design.md` and ADR 0008.
+
 ## Scope
 
 Phase 3B-1 defines contracts only. It performs zero TDX, CWA, NCDR, Google Routes, or other external API calls. HINO-only `v0_hino` remains independently buildable and deployable.

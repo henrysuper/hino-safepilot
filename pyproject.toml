@@ -37,6 +37,7 @@ hino-label-research = "hino_safepilot.label_research.cli:main"
 hino-dataset = "hino_safepilot.dataset.cli:main"
 hino-train-logistic = "hino_safepilot.modeling.cli:main"
 hino-train-xgboost = "hino_safepilot.modeling.xgboost_cli:main"
+hino-alert-policy = "hino_safepilot.alerting.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

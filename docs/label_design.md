@@ -1,5 +1,9 @@
 # Phase 3A Risk Label Design and Empirical Audit
 
+## Phase 3C-4 onset-aware voice audit
+
+Continuous positive Label V0 anchors remain one target-risk episode for intervention recall. An episode now retains all explaining organizer event onsets, not only the earliest, so emitted voice is associated with the next onset still within the configured future horizon. This prevents an earlier event inside a merged region from producing a negative or inflated voice lead. Legacy intervention lead remains separate from voice lead.
+
 ## Status and scope
 
 This document records aggregate Phase 3A research. It recommends a candidate label contract for human review; it does **not** authorize dataset generation, feature construction, model training, or production alerts.
@@ -275,3 +279,9 @@ Remaining `UNRESOLVED` decisions:
 - compound-risk definition and whether phone/other classes join a future target.
 
 Phase 3C-2 does not change Label V0. Cooldown, escalation, hysteresis, alert matching, and speech suppression are downstream Alert Policy V1 behavior only. They never rewrite onset truth or turn persistent/cooldown observations into new positives.
+
+## Phase 3C-3 downstream episode interpretation
+
+Alert Policy v2 also leaves Label V0 unchanged. For policy evaluation only, consecutive positive `label_any_core_risk_60s` anchors in the same `(enabledCode, journeyCode)` form one continuous target-risk region until a negative anchor or configured continuity gap. This prevents one future onset horizon from being counted once per telemetry row. Trusted onset timestamps remain authoritative for lead time; if an exact onset cannot be linked, timing metrics are unavailable rather than inferred.
+
+Idling and DMS arbitration are downstream modality gates, not target relabeling. Organizer-confirmed idling is complete stationary state with engine on; low-speed movement is not substituted. Synthetic DMS state is always `is_mock=true` and never enters empirical Label V0 metrics.

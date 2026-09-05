@@ -1,5 +1,14 @@
 # HINO SafePilot Requirements
 
+## Phase 3C-4 context-aware voice qualification
+
+- The frozen XGBoost model and unseen-vehicle behavior shall not be modified.
+- External context may qualify only L2 voice; rejection shall retain L1 visual intervention and L3 shall pass through.
+- Historical joins shall reject future source or availability timestamps and record age/distance provenance.
+- Missing/stale/error behavior shall be configurable and auditable; policy-only fallback is the default.
+- Mock context shall be tagged and excluded from official optimization and metrics.
+- Gate selection shall use development data only. Without admissible historical context, optimization and ablation claims shall be unavailable rather than simulated.
+
 ## Product scope
 
 SafePilot is a driver-centered commercial-vehicle safety coach. The intended product loop is:
@@ -63,6 +72,11 @@ Repository foundation and audit were completed in Phase 1, and reproducible XLSX
 - FR-R03: Support calibrated risk output, configurable thresholds, cooldown, deduplication, hysteresis, and a maximum alert rate.
 - FR-R04: Continue HINO-only inference if any optional external provider is unavailable.
 - FR-R05: Never require a training workstation GPU for demo or production inference.
+- FR-R06: Separate target episodes receiving any L1/L2/L3 intervention from those receiving L2/L3 voice; high voice coverage is not an objective.
+- FR-R07: Isolate smoothing, persistence, hysteresis, cooldown, episode, and rolling-budget state by the organizer-confirmed `(enabledCode, journeyCode)` key.
+- FR-R08: Gate normal predictive voice during organizer-defined idling without blindly silencing explicit direct-critical or DMS semantics.
+- FR-R09: Accept optional DMS arbitration state and suppress semantically overlapping SafePilot voice while retaining visual state and an auditable `suppressed_by_dms` reason.
+- FR-R10: Apply one global Alert Policy v2 configuration to overall, vehicle, existing seen/unseen-assignment, and HINO Type 300/500/700 slices.
 
 ### After driving
 
@@ -91,3 +105,7 @@ Repository foundation and audit were completed in Phase 1, and reproducible XLSX
 - NFR-12 Real-data egress: no real competition-derived payload may be sent to Gemini until a human approves a separate API policy; synthetic opt-in testing only.
 - NFR-13 Holdout honesty: November results after Phase 3C-1 must be labeled known-holdout comparative evidence; no later model may present them as an unbiased final test.
 - NFR-14 Alert separation: prediction probability and speech decisions use separate typed contracts; cooldown, escalation, and hysteresis cannot modify labels or model probabilities.
+- NFR-15 Mock isolation: every synthetic/mock policy record is tagged `is_mock=true` and excluded from official empirical optimization and HINO performance metrics.
+- NFR-16 Policy selection integrity: search uses development data only, applies available feasibility constraints before lexicographic ranking, and returns no winner when none is feasible.
+- NFR-17 Identity fidelity: `enabledCode` is a vehicle identifier, not a driver identity; true driver personalization must not be claimed while driver rotation is unavailable.
+- NFR-18 Voice auditability: retain raw and smoothed risk, slope, requested/emitted level, modality, episode, idling/DMS state, budget, suppression reason, and policy version for every policy decision.

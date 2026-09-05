@@ -1,5 +1,9 @@
 # HINO SafePilot ML System Design
 
+## Phase 3C-4 post-policy context gate
+
+External context is not an XGBoost feature in this phase. The frozen scorer and Alert Policy v2 run first; an optional deterministic gate may downgrade emitted L2 voice to L1 visual while preserving intervention. L3 is outside the qualification gate. Selection is development-only and requires historical observations with source and availability timestamps. Because HINO timezone and admissible snapshots are unavailable, no context gate was empirically optimized or trained; mock fixtures exercise integration only.
+
 ## Status and prediction task
 
 Label V0 was human-approved and materialized as Dataset `v0_hino`. Phase 3C-1 has trained and frozen the first HINO-only Logistic Regression offline baseline; it is not a production alert model.
@@ -257,3 +261,11 @@ The one-time November `KNOWN_HOLDOUT COMPARATIVE BENCHMARK` has XGBoost PR-AUC 0
 Global SHAP is restricted to association-only reporting. The strongest families are dominated by prior-event history plus engine/dynamics signals. No SHAP result is causal, and no private identifier is explained.
 
 Alert Policy V1 is evaluated separately. It materially reduces voice/false-alert burden but also lowers event coverage. Its Pareto candidates remain experimental; there is no approved production threshold or policy winner.
+
+## Phase 3C-3 policy-only protocol
+
+Phase 3C-3 freezes the XGBoost model, calibration, features, and Label V0. It develops only Alert Policy v2 on late-September validation whole trips. November has already informed earlier work and remains a `KNOWN_HOLDOUT COMPARATIVE BENCHMARK`; no fresh-holdout claim is permitted. Unseen-vehicle diagnostics are retained without vehicle embeddings, per-vehicle/Type thresholds, model changes, or subgroup tuning.
+
+The engine separates score detection, any intervention, and voice. It uses deterministic L0–L3 state, elapsed-time EMA/persistence, enter/exit hysteresis, optional non-causal score slope, cooldown, episode de-duplication, and a per-`(enabledCode, journeyCode)` rolling L2 budget. Organizer-defined exact idling state gates predictive voice. DMS overlap is represented through an optional capability interface; it is synthetic-only in current offline evidence.
+
+Target-risk episodes are continuous positive Label V0 regions, not prediction rows. Trusted onset timestamps support lead-time and three-second timely-coverage metrics. Existing Phase 3C-2 Risk Coverage remains separately named for comparison. Selection is constraint-first and lexicographic; no weighted score or silent constraint relaxation is allowed. Type 300/500/700 and the existing development/holdout vehicle assignment are reporting slices under one global policy.

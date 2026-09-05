@@ -34,3 +34,5 @@ Training probes modern XGBoost CUDA (`device=cuda`, `tree_method=hist`) and fall
 ## Limitations
 
 November is not an unbiased final test. Fold and subgroup variation remain material; unseen-vehicle PR-AUC does not improve over Logistic. Alert thresholds are not validated, PCS is too sparse for a standalone claim, timezone is unresolved, and no observed model gain establishes accident reduction or causality.
+
+Phase 3C-3 freezes this model and its calibration. Tiered alert-policy development changes only downstream intervention/voice decisions; it does not retrain, retune, or materially modify XGBoost. Existing unseen-vehicle diagnostics remain visible but are not optimization targets, and November cannot be relabeled as a fresh holdout.

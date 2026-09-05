@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 from .models import (
     ContextAvailability,
@@ -11,7 +11,19 @@ from .models import (
     DisasterContextSnapshot,
     TrafficContextSnapshot,
     WeatherContextSnapshot,
+    SnapshotBase,
 )
+
+
+SnapshotT = TypeVar("SnapshotT", bound=SnapshotBase, covariant=True)
+
+
+class ContextProvider(Protocol[SnapshotT]):
+    """Reusable single-domain provider contract for offline replay or an API layer."""
+
+    provider_name: str
+
+    def fetch(self, query: ContextQuery) -> SnapshotT: ...
 
 
 class TrafficContextProvider(Protocol):
@@ -38,11 +50,13 @@ class NullContextProvider:
         return {
             "context_timestamp": query.context_timestamp,
             "source_timestamp": None,
+            "available_timestamp": None,
             "freshness_seconds": None,
             "quality_status": self.status,
             "provider_name": "null",
             "source_dataset_version": None,
             "error_code": self.status.value.upper(),
+            "is_mock": False,
         }
 
     def traffic(self, query: ContextQuery) -> TrafficContextSnapshot:
@@ -72,6 +86,21 @@ class SyntheticContextProvider:
 
     def _at_query(self, snapshot, query: ContextQuery):
         source = snapshot.source_timestamp
+        available = snapshot.available_timestamp
+        if (source is not None and source > query.context_timestamp) or (
+            available is not None and available > query.context_timestamp
+        ):
+            payload = snapshot.model_dump()
+            payload.update(
+                context_timestamp=query.context_timestamp,
+                source_timestamp=None,
+                available_timestamp=None,
+                freshness_seconds=None,
+                join_age_seconds=None,
+                quality_status=ContextAvailability.ERROR,
+                error_code="FUTURE_CONTEXT_REJECTED",
+            )
+            return type(snapshot)(**payload)
         freshness = (
             max(0.0, (query.context_timestamp - source).total_seconds()) if source else None
         )
@@ -86,6 +115,7 @@ class SyntheticContextProvider:
             update={
                 "context_timestamp": query.context_timestamp,
                 "freshness_seconds": freshness,
+                "join_age_seconds": freshness,
                 "quality_status": status,
             }
         )
@@ -141,4 +171,3 @@ class ContextAggregator:
             disaster=disaster,
             base_hino_model_available=True,
         )
-

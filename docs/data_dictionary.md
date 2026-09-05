@@ -1,5 +1,9 @@
 # HINO SafePilot Data Dictionary
 
+## Phase 3C-4 external context audit fields
+
+External snapshots are optional and never frozen-XGBoost features. `source_timestamp` is observation time; `available_timestamp` is when it could have been known; both must be no later than policy decision time. `join_age_seconds` and `join_distance_m` audit linkage. `quality_status` is `available`, `stale`, `missing`, `error`, or `unsupported`; `is_mock=true` excludes a row from empirical metrics. Candidate traffic fields include road speed, congestion, incident, distance, closure, and road class. Candidate weather fields include 10-minute/1-hour/3-hour rainfall and warning flags. Fields are populated only from admissible official snapshots.
+
 ## Scope and evidence levels
 
 This dictionary describes the private workbook without reproducing any telemetry row or identifier value.
@@ -10,6 +14,8 @@ This dictionary describes the private workbook without reproducing any telemetry
 - **UNRESOLVED**: evidence is absent, inconsistent, or requires a product/domain decision.
 
 Source abbreviations: `FAQ Qn` refers to `hino_field_faq.pdf`; `Manual pn` refers to `itraq_hackathon_manual.pdf`; `Mapping rn` refers to workbook sheet `欄位對照表`, row `n` as displayed by Excel/openpyxl.
+
+The Phase 3C-3 clarifications below also incorporate the organizer FAQ dated 2026-09-02. They supersede earlier unresolved wording only where explicitly confirmed.
 
 ## Journey identity - organizer confirmed
 
@@ -47,6 +53,17 @@ This is not inferred from the column names; FAQ Q3 explicitly instructs using bo
 | `output` | `can.engine.rpm` | `engine_rpm` | Engine revolutions per minute. | raw str; target float32 | No | core engine feature | Mapping r19 | Within documented range. | None. |
 | `output` | `can.engine.engineLoad` | `engine_load_pct` | Current engine load percentage; mapping states range 0-250. | raw str; target float32 | No | core engine feature | Mapping r20 | Observed range is 0-100; event load mapping separately states 0-100. | Meaning of documented 101-250 range and whether value is truly percent. |
 | `output` | `fenceId` | `fence_ids` | Fleet-manager-defined geofence IDs, `&`-delimited when present. | structurally blank; target list[string] | Yes (100%) | unavailable in current ML | Mapping r6; FAQ Q1 | FAQ confirms all competition vehicles have no geofence, so all values are blank. | None; do not impute or invent. |
+
+### Phase 3C-3 organizer clarifications
+
+- `enabledCode` is a vehicle-level unique identifier and is not a driver identity.
+- `journeyCode` can collide across vehicles. Journey, cooldown, episode, and rolling-budget state must use `(enabledCode, journeyCode)`.
+- Actual driver identity and rotation are unavailable. The organizer permits the analytical assumption that one journey can correspond to one driver, but outputs must not claim verified driver personalization.
+- Idling is complete stationary state while the engine remains on. Low-speed movement is not idling. Normal predictive voice is gated during idling; direct safety/DMS semantics require separate arbitration.
+- Type 300, 500, and 700 denotes HINO 300, HINO 500, and HINO 700. Phase 3C-3 uses it only as an alert-policy robustness slice and never tunes Type-specific thresholds.
+- Competition `fenceId` values are all empty and cannot be a model or policy feature.
+- Fatigue DMS uses gaze, face orientation, and eyelid signals; distraction includes head turning and phone behavior. Both can produce Chinese voice and lamp warnings. Simultaneous live DMS state is unavailable in the offline dataset, so policy arbitration tests use only `is_mock=true` fixtures.
+- Mock weather, traffic, or driver-identity information is permitted only when explicitly tagged. Mock rows are excluded from official empirical optimization and HINO performance metrics.
 
 ## Flattened event fields
 
