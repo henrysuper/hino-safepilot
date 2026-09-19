@@ -1,0 +1,46 @@
+{
+  "contract_version": "synthetic-risk-preview-v1",
+  "view": "driving",
+  "data_classification": "synthetic",
+  "prototype_marker": "SYNTHETIC_DEMO",
+  "model_status": "xgboost_experiment_ready_not_production_preview_is_synthetic",
+  "prediction_contract": {
+    "is_simulation": true,
+    "risk_probability": 0.64,
+    "risk_level": "模擬：需留意",
+    "prediction_horizon_sec": 60,
+    "predicted_events": [
+      "模擬減速風險"
+    ],
+    "top_factors": [
+      {
+        "label": "速度變化",
+        "note": "Synthetic factor preview"
+      },
+      {
+        "label": "近期事件密度",
+        "note": "Synthetic factor preview"
+      },
+      {
+        "label": "引擎負載趨勢",
+        "note": "Synthetic factor preview"
+      }
+    ],
+    "model_version": "synthetic-xgboost-preview-not-live-model",
+    "timestamp": "synthetic-relative-time"
+  },
+  "research_preview": {
+    "candidate_label": "Core Any Risk · Label V0",
+    "positive_rate": null,
+    "anchor_cadence": "10 秒 · Dataset V0",
+    "notice": "Offline aggregate evaluation exists, but this risk score is synthetic and no live inference is performed."
+  },
+  "alert_policy_timeline": [
+    {"relative_seconds": 0, "risk_probability": 0.42, "should_speak": false, "decision_label": "NORMAL · 不播報"},
+    {"relative_seconds": 10, "risk_probability": 0.63, "should_speak": true, "decision_label": "新風險 episode · 模擬播報"},
+    {"relative_seconds": 20, "risk_probability": 0.68, "should_speak": false, "decision_label": "ACTIVE · 抑制重複"},
+    {"relative_seconds": 30, "risk_probability": 0.81, "should_speak": true, "decision_label": "單次 escalation · 模擬播報"},
+    {"relative_seconds": 90, "risk_probability": 0.72, "should_speak": false, "decision_label": "cooldown 到期不自動播報"},
+    {"relative_seconds": 110, "risk_probability": 0.22, "should_speak": false, "decision_label": "第二個低風險 anchor · RESET"}
+  ]
+}

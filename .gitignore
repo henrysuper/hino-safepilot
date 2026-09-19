@@ -1,0 +1,94 @@
+# =========================
+# HINO competition private data
+# =========================
+data/raw/*
+data/reference/*
+data/interim/*
+data/processed/*
+
+# Keep empty folder structure
+!data/raw/.gitkeep
+!data/reference/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# ML artifacts
+# =========================
+models/**/*
+!models/.gitkeep
+!models/README.md
+!models/risk/
+!models/risk/v0_logistic/
+!models/risk/v0_logistic/model_card.md
+!models/risk/v1_xgboost/
+!models/risk/v1_xgboost/model_card.md
+*.pt
+*.pth
+*.ckpt
+*.joblib
+*.pkl
+*.onnx
+*.safetensors
+mlruns/
+mlartifacts/
+wandb/
+
+# =========================
+# Generated reports
+# =========================
+reports/generated/
+reports/**/*
+!reports/.gitkeep
+!reports/README.md
+
+# =========================
+# Node / Expo
+# =========================
+node_modules/
+.expo/
+dist/
+web-build/
+
+# =========================
+# OS / IDE
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+
+# =========================
+# Downloaded private backup bundle (contains raw xlsx/PDF + models) — never track
+# =========================
+hino-safepilot-ignore*/
+*.docx
+
+# Session scratch files
+_*.ps1
+_*.txt
+_*.py

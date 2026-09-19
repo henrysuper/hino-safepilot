@@ -1,0 +1,55 @@
+{
+  "version": "context-risk-v0-data-estimated",
+  "enabled": true,
+  "estimated_from": "data/interim (events_observed + telemetry_normalized)",
+  "horizon_seconds": 60,
+  "core_event_types": [
+    7,
+    12,
+    16,
+    19,
+    20
+  ],
+  "overall_event_rate": 0.247757,
+  "overall_rows": 493742,
+  "congestion_logit_delta": {
+    "heavy_congestion": -0.5611,
+    "moderate_congestion": 0.2321,
+    "free_flow": 0.3323
+  },
+  "congestion_rates_audit": {
+    "heavy_congestion": {
+      "rows": 224362,
+      "positives": 31717,
+      "event_rate": 0.141365
+    },
+    "moderate_congestion": {
+      "rows": 74069,
+      "positives": 23146,
+      "event_rate": 0.312492
+    },
+    "free_flow": {
+      "rows": 195311,
+      "positives": 67465,
+      "event_rate": 0.345423
+    }
+  },
+  "rows_without_usable_speed": 2,
+  "road_class_logit_delta": {},
+  "weather": {
+    "enabled": true,
+    "note": "ASSUMPTION values, not validated against HINO data",
+    "rain_thresholds_mm": {
+      "light": 2.0,
+      "moderate": 8.0,
+      "heavy": 15.0
+    },
+    "rain_logit_delta": {
+      "light": 0.1,
+      "moderate": 0.3,
+      "heavy": 0.6
+    },
+    "low_visibility_threshold_m": 500.0,
+    "low_visibility_logit_delta": 0.4
+  }
+}

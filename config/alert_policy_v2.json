@@ -1,0 +1,51 @@
+{
+  "study_id": "phase3c3-tiered-alert-policy-20260905",
+  "policy_version": "alert-policy-v2.0-provisional",
+  "model_version": "v1_xgboost_1.0",
+  "dataset_version": "v0_hino",
+  "development_scope": "validation_late_september_2025",
+  "fresh_holdout_status": "PENDING_NO_GENUINELY_UNTOUCHED_DATA",
+  "random_seed": 20260905,
+  "policy_fixed": {
+    "rolling_voice_window_seconds": 3600,
+    "rolling_l2_voice_budget": 2,
+    "idling_gate_enabled": true,
+    "dms_capability_enabled": false,
+    "l3_bypasses_l2_voice_budget": true,
+    "same_episode_l2_voice_max": 1,
+    "same_episode_l3_voice_max": 1
+  },
+  "search_space": {
+    "l1_enter_threshold": [0.2, 0.3],
+    "l2_enter_threshold": [0.5, 0.6],
+    "l3_enter_threshold": [0.8, 0.9],
+    "hysteresis_margin": [0.05, 0.1],
+    "ema_half_life_seconds": [5.0, 15.0],
+    "l2_persistence_seconds": [10.0, 20.0],
+    "l2_cooldown_seconds": [300.0, 600.0],
+    "risk_slope_l3_threshold_per_second": [0.02, 0.04]
+  },
+  "evaluation": {
+    "label_horizon_seconds": 60.0,
+    "target_episode_maximum_contiguous_gap_seconds": 30.0,
+    "timely_lead_seconds": 3.0,
+    "driving_fraction_threshold": 0.5,
+    "idling_signal": "exact_anchor_vehicle_status_equals_2",
+    "dms_signal": "unavailable_offline_no_empirical_arbitration_metric",
+    "anchor_exposure_seconds": 10.0,
+    "meaningful_vehicle_minimum_target_episodes": 10
+  },
+  "acceptance_criteria": {
+    "status": "PROVISIONAL_ENGINEERING_TARGETS_NOT_REGULATORY_STANDARDS",
+    "any_intervention_recall_floor": 0.85,
+    "any_intervention_recall_target": 0.9,
+    "timely_coverage_3s_floor": 0.8,
+    "mean_advisory_voice_per_driving_hour_max": 1.0,
+    "advisory_voice_per_rolling_60min_hard_max": 2,
+    "p95_rolling_advisory_voice_count_max": 2,
+    "offline_false_voice_per_driving_hour_max": 0.25,
+    "voice_precision_min": 0.8,
+    "median_lead_time_target_seconds": 5.0,
+    "same_episode_l2_voice_max": 1
+  }
+}

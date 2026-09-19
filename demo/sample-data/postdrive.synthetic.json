@@ -1,0 +1,58 @@
+{
+  "contract_version": "synthetic-postdrive-v1",
+  "view": "postdrive",
+  "data_classification": "synthetic",
+  "prototype_marker": "SYNTHETIC_DEMO",
+  "trip_summary": {
+    "distance_km": 42.8,
+    "duration_minutes": 68,
+    "fuel_used_l": 8.6,
+    "fuel_efficiency_km_per_l": 5.0,
+    "event_metrics": [
+      {
+        "event_name": "decelerate",
+        "label": "急減速",
+        "count": 2
+      },
+      {
+        "event_name": "speeding",
+        "label": "超速事件",
+        "count": 1
+      },
+      {
+        "event_name": "ldws",
+        "label": "車道偏移警示",
+        "count": 0
+      }
+    ],
+    "strongest_behavior_label": "車道維持",
+    "weakest_behavior_label": "減速平順度",
+    "notable_event": {
+      "event_name": "decelerate",
+      "event_label": "一次急減速",
+      "trip_progress_pct": 68,
+      "previous_speed_mean_kph": 56,
+      "next_behavior": "speed_decreased",
+      "next_behavior_label": "平順降速"
+    },
+    "quality_warnings": []
+  },
+  "next_goal": {
+    "target_metric": "decelerate",
+    "priority_score": 0.78
+  },
+  "ai_report": {
+    "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+    "strengths": [
+      "車道維持穩定"
+    ],
+    "weaknesses": [
+      "減速平順度"
+    ],
+    "primary_risk": "decelerate",
+    "recommendations": [
+      "增加反應距離"
+    ],
+    "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+  }
+}

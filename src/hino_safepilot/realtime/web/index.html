@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HINO SafePilot · 60 秒風險預測 Demo</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>HINO SafePilot</h1>
+      <p class="sub">60 秒駕駛風險預測 · 即時路況 (TDX) + 天氣</p>
+    </header>
+
+    <section class="card">
+      <h2>輸入位置</h2>
+      <div class="grid">
+        <label>緯度 Lat
+          <input id="lat" type="number" step="0.0001" value="25.0470" />
+        </label>
+        <label>經度 Lon
+          <input id="lon" type="number" step="0.0001" value="121.5170" />
+        </label>
+        <label>城市 (TDX)
+          <select id="city">
+            <option value="auto">自動 (依位置判斷)</option>
+            <option>Taipei</option>
+            <option>NewTaipei</option>
+            <option>Taoyuan</option>
+            <option>Taichung</option>
+            <option>Tainan</option>
+            <option>Kaohsiung</option>
+            <option>Hsinchu</option>
+            <option>Keelung</option>
+          </select>
+        </label>
+        <label>車系代碼
+          <input id="vehicle_series" type="number" value="300" />
+        </label>
+        <label>模擬 1 小時雨量 (mm)
+          <input id="rain_mm" type="number" step="0.5" value="0" />
+        </label>
+        <label>基準車速 (km/h，留空=用即時路段車速)
+          <input id="base_speed" type="number" placeholder="自動用即時路況" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="locate" type="button" class="ghost">用我的位置</button>
+        <button id="predict" type="button">預測風險</button>
+      </div>
+      <p id="status" class="status"></p>
+    </section>
+
+    <section id="result" class="card result hidden">
+      <h2>預測結果</h2>
+      <div class="gauge">
+        <div id="level" class="level">—</div>
+        <div class="prob">
+          <span id="prob">0%</span>
+          <small>情境調整後 60 秒風險機率</small>
+        </div>
+      </div>
+      <div class="meta">
+        <span id="quality" class="tag"></span>
+        <span id="model" class="tag"></span>
+      </div>
+
+      <div class="panel adj">
+        <h3>風險組成（基礎模型 → 情境調整）</h3>
+        <ul id="adjustment"></ul>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>即時路況 (TDX)</h3>
+          <ul id="traffic"></ul>
+        </div>
+        <div class="panel">
+          <h3>天氣</h3>
+          <ul id="weather"></ul>
+        </div>
+      </div>
+
+      <details>
+        <summary>備註 / 誠實說明</summary>
+        <ul id="notes"></ul>
+      </details>
+    </section>
+
+    <footer>
+      <p>此為研究原型 (prototype)，非生產級安全系統。天氣目前為合成資料 (mock)，路況為真實 TDX。</p>
+    </footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
