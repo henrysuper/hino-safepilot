@@ -7,7 +7,7 @@ SafePilot 是以商用車駕駛為核心的 AI 安全駕駛教練原型。
 系統目前聚焦三個階段：
 
 1. **行駛前**：根據近期駕駛行為產生每日改善目標
-2. **行駛中**：利用過去約 5 分鐘車聯網資訊，預測未來 60 秒安全風險
+2. **行駛中**：利用過去約 5 分鐘車聯網資訊，預測未來 60 秒安全風險；並可接入即時 TDX 路況與天氣做情境調整（demo 階段）
 3. **行駛後**：分析整趟行程、事件前後行為，產生改善建議
 
 > Status: Hackathon Prototype / Offline Research  
@@ -53,10 +53,34 @@ Risk within next 60 seconds
 
 目前 XGBoost 為 HINO-only offline model。
 
-模型尚未整合：
+### Realtime Demo（即時 60 秒風險 + 即時路況）
 
-- TDX 即時／歷史路況
-- CWA 天氣
+新增 `src/hino_safepilot/realtime/`：一個可操作的即時預測 web/API demo。
+
+- **即時 TDX 路況**：以真實憑證抓 VDLive，顯示所在道路、道路類別、方向、路段車速；自動依 GPS 判斷縣市，並在鄰近無偵測器時擴展到相鄰縣市 / 國道。
+- **天氣**：目前使用 synthetic provider（明確標記 `is_mock`），待 CWA 金鑰後可接真實資料。
+- **情境風險調整層**（logit 加法，不需重訓模型）：
+  - 路況/壅塞係數由 HINO 本地資料估計（可稽核）；
+  - 天氣係數為未驗證假設（明確標記）；
+  - 畫面分層顯示「基礎模型風險 → 情境因子 → 調整後風險」。
+- **即時車速驅動暖機**：暖機遙測基準車速取自即時路段車速，使不同地點/路況產生不同基礎風險。
+
+啟動：
+
+```powershell
+python -m hino_safepilot.realtime serve --host 127.0.0.1 --port 8080
+```
+
+詳見 `src/hino_safepilot/realtime/README.md`。
+
+> 重要限制：情境是透過「模型輸出後的調整層」影響最終分數，**並非模型內學習**。
+> 要讓外部情境成為模型特徵，仍須依 `docs/external_context_plan.md` 的 `v1_hino_traffic`
+> 重新訓練（需 2025 歷史情境資料）。基礎模型的其餘特徵在 demo 中仍為合成暖機。
+
+尚未整合（模型內特徵層級）：
+
+- TDX 歷史路況（訓練用）
+- CWA 天氣（即時與歷史）
 - NCDR 災害警示
 - Google Routes
 - Live iTRAQ stream
@@ -126,7 +150,8 @@ hino-safepilot/
 │       ├── dataset/
 │       ├── etl/
 │       ├── label_research/
-│       └── modeling/
+│       ├── modeling/
+│       └── realtime/        # Realtime 60s risk demo (web/API + live TDX + context layer)
 ├── tests/                   # Synthetic tests
 ├── .env.example
 ├── .gitignore
@@ -342,10 +367,11 @@ GOOGLE_MAPS_API_KEY=
 
 - Production Alert Policy
 - Fresh unbiased holdout evaluation
-- Historical / live TDX integration
-- Historical / live CWA integration
+- Historical TDX integration（訓練用；即時 TDX 已於 realtime demo 接入，但僅作情境後處理，非模型特徵）
+- Historical / live CWA integration（realtime demo 目前為 synthetic 天氣）
+- 外部情境進入模型特徵層級（需重訓 `v1_hino_traffic`）
 - NCDR integration
-- Real-time iTRAQ ingestion
+- Real-time iTRAQ ingestion（realtime demo 目前以合成暖機遙測代替）
 - FastAPI production backend
 - Expo mobile application
 - Production voice alert
