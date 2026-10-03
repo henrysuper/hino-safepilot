@@ -47,3 +47,113 @@ git clone https://github.com/henrysuper/hino-safepilot.git
 cd hino-safepilot
 
 code .
+```
+
+## 切換到 safepilot 分支
+
+目前開發中的功能（含安全分數）在 `safepilot` 分支：
+
+```powershell
+git switch safepilot
+git pull origin safepilot
+```
+
+之後要更新程式碼，只要再執行一次 `git pull origin safepilot`。
+
+---
+
+# 3. 建立 Python 環境（只需做一次）
+
+需要 **Python 3.12**（安裝時勾選「Add to PATH」）。在專案根目錄執行：
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
+> 本文件的指令都直接寫 `.venv\Scripts\python.exe`，不需要先啟用虛擬環境，也不會遇到 PowerShell 執行原則的錯誤。
+
+---
+
+# 4. 放入比賽資料（只需做一次）
+
+比賽資料放在團隊的 Google 雲端硬碟，**不在 GitHub 上**。雲端硬碟的資料夾名稱和專案不同，請依下表複製到對應位置，**不要整包複製進 `data\raw`**：
+
+| 雲端硬碟資料夾 | 複製到專案的 |
+|---|---|
+| `data raw` 內的檔案 | `data\raw\` |
+| `data reference` 內的檔案 | `data\reference\` |
+| `data interim` 內的資料夾 | `data\interim\` |
+| `data processed` 內的資料夾 | `data\processed\` |
+| `models risk` 內的檔案 | `models\risk\`（`v0_logistic`、`v1_xgboost` 各自對應） |
+
+放好後確認以下檔案存在：
+
+```text
+data\processed\analytics\trip_summaries.jsonl
+data\processed\analytics\improvement_goals.jsonl
+```
+
+並確認資料不會被 Git 追蹤：`git status` 不應出現任何 `data/` 開頭的檔案。
+
+---
+
+# 5. 確認環境正常
+
+```powershell
+.venv\Scripts\python.exe -m pytest
+```
+
+最後一行顯示全部 `passed` 即正常。
+
+---
+
+# 6. 執行安全分數與 Demo
+
+### 6.1 計算安全分數
+
+```powershell
+.venv\Scripts\python.exe -m hino_safepilot.analytics score
+```
+
+成功會印出評分統計，結果寫入 `data\processed\safety_scores\`（Git 忽略）。
+
+### 6.2 產生 Demo 資料
+
+```powershell
+.venv\Scripts\python.exe -m hino_safepilot.analytics export-demo --provider mock
+```
+
+自動挑一趟分數接近中位數的行程。`--provider mock` 使用內建文字範本，不會把資料送到 Gemini；真實資料送 Gemini 前須先取得團隊核准。
+
+### 6.3 開啟 Demo 網頁
+
+```powershell
+.venv\Scripts\python.exe scripts\serve_demo.py
+```
+
+| 網址 | 內容 |
+|---|---|
+| http://127.0.0.1:8000/?source=local | 本機真實分析結果 |
+| http://127.0.0.1:8000 | Synthetic Data（對外展示用） |
+
+在 PowerShell 按 `Ctrl + C` 關閉。
+
+> ⚠️ 真實資料畫面僅限本機檢視，**請勿截圖或傳到群組**；對外展示請用 Synthetic 版本。
+
+---
+
+# 7. 常見問題
+
+| 狀況 | 解決方式 |
+|---|---|
+| `Refusing to overwrite safety score output` | 已算過；要重算請刪除 `data\processed\safety_scores` 後重跑 6.1 |
+| `Run hino-analytics build first` | `data\processed\analytics` 沒放好，回到第 4 節 |
+| 網頁顯示「資料暫時無法取得」 | 確認網址有 `?source=local`，且 6.2 已執行 |
+| `Address already in use` | 改用 `scripts\serve_demo.py --port 8001`，網址改成 8001 |
+| `py` 不是可辨識的指令 | Python 安裝時未勾選 PATH，請重新安裝 |
+
+### 調整分數規則
+
+權重與參考值在 `config\safety_score_v1.json`，公式說明見 `docs\safety_score_v1.md`。修改後刪除 `data\processed\safety_scores`，再重跑 6.1、6.2。
