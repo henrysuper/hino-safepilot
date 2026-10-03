@@ -7,13 +7,17 @@ This directory is a framework-free localhost results viewer built with HTML, CSS
 From the repository root:
 
 ```powershell
-python -m http.server 8000 --bind 127.0.0.1 --directory demo
+python scripts/serve_demo.py
 ```
 
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000` for the synthetic samples.
 
 Opening `index.html` directly is not supported because browsers normally block `fetch()` for local JSON files.
 
+## Local private mode
+
+After `python -m hino_safepilot.analytics score` and `python -m hino_safepilot.analytics export-demo`, open `http://127.0.0.1:8000/?source=local`. The pre-drive and post-drive views then read `data/processed/demo_views/*.local.json` (Git-ignored) through the `/local-data/` route of `scripts/serve_demo.py`; the driving view stays synthetic. A banner marks the page as private local data. Local contracts use `prototype_marker: LOCAL_PRIVATE_DERIVED` and `data_classification: private_local`, and are rejected in synthetic mode (and vice versa).
+
 ## Data boundary
 
-`StaticJsonProvider` is the only current loading adapter. A future `ApiProvider` can replace it without rewriting the view renderers. Repository samples must remain synthetic and contain no competition telemetry, precise location, source provenance, or private identifiers. Real derived demo material, if separately approved later, belongs only in the ignored processed-data area.
+`StaticJsonProvider` is the only loading adapter, used for both synthetic samples and local private views. A future `ApiProvider` can replace it without rewriting the view renderers. Repository samples must remain synthetic and contain no competition telemetry, precise location, source provenance, or private identifiers. Real derived demo material belongs only in the ignored processed-data area.

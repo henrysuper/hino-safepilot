@@ -24,13 +24,13 @@
 
       <nav class="stage-nav" aria-label="SafePilot 三階段導覽">
         <button class="stage-button active" data-view="predrive" aria-selected="true">
-          <span class="stage-number">01</span><span>行前目標</span>
+          <span class="stage-number">01</span><span>行前安全提醒</span>
         </button>
         <button class="stage-button" data-view="driving" aria-selected="false">
           <span class="stage-number">02</span><span>行駛中 60 秒風險</span>
         </button>
         <button class="stage-button" data-view="postdrive" aria-selected="false">
-          <span class="stage-number">03</span><span>行後報告</span>
+          <span class="stage-number">03</span><span>行後安全報告</span>
         </button>
       </nav>
 
@@ -39,31 +39,36 @@
           <strong>資料暫時無法取得</strong>
           <span>請確認 localhost server 與 synthetic JSON 是否可讀取。</span>
         </div>
+        <div id="local-banner" class="local-banner hidden" role="note">
+          <strong>本機私有資料</strong>
+          <span>分數與提醒來自本機的 HINO 分析結果，只能在本機檢視，請勿截圖或外流。行駛中畫面仍使用 Synthetic Demo。</span>
+        </div>
 
         <section id="predrive-view" class="view active" aria-labelledby="predrive-title">
           <div class="view-heading">
-            <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">今天，只專注改善一件事</h2></div>
-            <span class="contract-chip">Deterministic Goal</span>
+            <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">安全提醒</h2></div>
+            <span class="contract-chip">Deterministic Score &amp; Goal</span>
           </div>
-          <div class="hero-grid">
-            <article class="goal-card accent-card">
-              <p class="card-label">今日改善目標</p>
-              <div class="goal-title-row"><span id="goal-icon" class="metric-icon">↓</span><h3 id="goal-title">—</h3></div>
-              <p id="goal-message" class="lead-copy">資料載入中…</p>
-              <div class="priority-row"><span>優先分數</span><strong id="goal-priority">—</strong></div>
-              <div class="progress-track"><span id="goal-progress"></span></div>
+          <article class="goal-card accent-card today-goal">
+            <p class="card-label">今日改善目標</p>
+            <div class="goal-title-row"><span id="goal-icon" class="metric-icon">↓</span><h3 id="goal-title">—</h3></div>
+            <p id="goal-message" class="lead-copy">資料載入中…</p>
+            <div class="goal-how"><span>怎麼做</span><p id="goal-action">—</p></div>
+          </article>
+          <div class="briefing-grid">
+            <article class="metric-panel reminder-panel">
+              <p class="card-label">出發前安全提醒</p>
+              <ol id="reminder-list" class="reminder-list"></ol>
             </article>
-            <article class="metric-panel">
-              <p class="card-label">行為基線比較</p>
-              <div class="comparison-number"><strong id="goal-change">—</strong><span>相較近期基線</span></div>
-              <div class="comparison-grid">
-                <div><span>近期</span><strong id="goal-recent">—</strong></div>
-                <div><span>基線</span><strong id="goal-baseline">—</strong></div>
-              </div>
-              <p id="goal-unit" class="microcopy">—</p>
+            <article class="metric-panel score-summary">
+              <p class="card-label">近期安全分數</p>
+              <dl class="summary-list">
+                <div><dt>上一趟</dt><dd><strong id="brief-last-score">—</strong><em id="brief-last-grade" class="grade-badge">—</em></dd></div>
+                <div><dt id="brief-recent-label">近 7 天平均</dt><dd><strong id="brief-recent-score">—</strong><em id="brief-trend" class="trend-chip">—</em></dd></div>
+                <div><dt>最需加強</dt><dd><strong id="brief-weakest" class="summary-text">—</strong></dd></div>
+              </dl>
             </article>
           </div>
-          <article class="action-strip"><span class="action-index">ACTION</span><p id="goal-action">—</p></article>
         </section>
 
         <section id="driving-view" class="view" aria-labelledby="driving-title">
@@ -111,6 +116,20 @@
             <div><p class="eyebrow">After the trip</p><h2 id="postdrive-title">把每趟行程變成下一次進步</h2></div>
             <span class="contract-chip">Post-trip Analytics</span>
           </div>
+          <div class="score-grid">
+            <article class="score-card accent-card">
+              <p class="card-label">本趟安全分數</p>
+              <div class="score-ring" id="score-ring"><div><strong id="score-overall">—</strong><span>/ 100</span></div></div>
+              <div class="score-grade-row"><span id="score-grade" class="grade-badge large">—</span><p id="score-note">—</p></div>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">分項分數</p>
+              <div id="category-bars" class="category-bars"></div>
+              <p class="card-label deduction-label">主要扣分原因</p>
+              <ul id="deduction-list" class="deduction-list"></ul>
+              <p id="score-caps" class="microcopy"></p>
+            </article>
+          </div>
           <div id="trip-metrics" class="metric-cards"></div>
           <div class="report-grid">
             <article class="event-card">
@@ -122,12 +141,13 @@
               </div>
             </article>
             <article class="ai-report-card accent-card">
-              <p class="card-label">AI 行程摘要 · Synthetic</p>
+              <p class="card-label" id="ai-label">AI 行程摘要 · Synthetic</p>
               <blockquote id="ai-summary">資料載入中…</blockquote>
               <div class="next-focus"><span>NEXT FOCUS</span><strong id="next-focus">—</strong></div>
             </article>
           </div>
           <article class="context-card"><p class="card-label">值得留意的事件脈絡</p><div id="event-context">—</div></article>
+          <p class="microcopy score-disclaimer">安全分數由固定公式計算（safety-score-v1），權重與參考值為 prototype 設定，尚未經 HINO／domain expert 驗證；AI 只負責文字說明，不參與評分。</p>
         </section>
       </main>
 

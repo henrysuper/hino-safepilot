@@ -1,0 +1,54 @@
+{
+  "version": "safety-score-v1",
+  "minimum_scored_distance_km": 2.0,
+  "rate_distance_floor_km": 10.0,
+  "reference_score": 70.0,
+  "grade_thresholds": {"A": 90, "B": 80, "C": 70, "D": 60},
+  "categories": {
+    "safety_alerts": {
+      "label": "安全警示",
+      "weight": 0.40,
+      "items": {
+        "pcs": {"weight": 0.30, "reference": 1.0, "kind": "events_per_100km"},
+        "fatigue": {"weight": 0.25, "reference": 3.0, "kind": "events_per_100km"},
+        "phone": {"weight": 0.15, "reference": 5.0, "kind": "events_per_100km"},
+        "distract": {"weight": 0.15, "reference": 10.0, "kind": "events_per_100km"},
+        "ldws": {"weight": 0.10, "reference": 12.0, "kind": "events_per_100km"},
+        "seatbelt": {"weight": 0.05, "reference": 20.0, "kind": "events_per_100km"}
+      }
+    },
+    "smooth_driving": {
+      "label": "平順駕駛",
+      "weight": 0.25,
+      "items": {
+        "decelerate": {"weight": 0.60, "reference": 60.0, "kind": "events_per_100km"},
+        "accelerate": {"weight": 0.40, "reference": 10.0, "kind": "events_per_100km"}
+      }
+    },
+    "speed_control": {
+      "label": "速度控制",
+      "weight": 0.20,
+      "items": {
+        "speeding": {"weight": 1.00, "reference": 35.0, "kind": "events_per_100km"}
+      }
+    },
+    "vehicle_load": {
+      "label": "車輛負荷",
+      "weight": 0.15,
+      "items": {
+        "engine_overloading": {"weight": 0.70, "reference": 30.0, "kind": "events_per_100km"},
+        "idle": {"weight": 0.30, "reference": 30.0, "kind": "idle_pct"}
+      }
+    }
+  },
+  "critical_event_caps": {
+    "pcs": 79,
+    "fatigue": 79
+  },
+  "predrive": {
+    "recent_days": 7,
+    "minimum_recent_scored_trips": 1,
+    "critical_reminder_events": ["pcs", "fatigue", "phone", "distract"]
+  },
+  "disclaimer": "UNRESOLVED: category weights, reference rates and critical caps are prototype values loosely informed by the local fleet distribution; they are not validated by HINO or accident outcome data."
+}

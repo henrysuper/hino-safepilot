@@ -157,6 +157,71 @@ class DailyImprovementGoal(ContractModel):
     scoring_version: str
 
 
+class ScoreDeduction(ContractModel):
+    item: str
+    category: str
+    observed_value: float | None
+    unit: str
+    points_lost: float = Field(ge=0)
+
+
+class CategoryScore(ContractModel):
+    category: str
+    label: str
+    weight: float = Field(ge=0, le=1)
+    score: float | None = Field(default=None, ge=0, le=100)
+    deductions: list[ScoreDeduction] = Field(default_factory=list)
+
+
+class TripSafetyScore(ContractModel):
+    contract_version: Literal["trip-safety-score-v1"] = "trip-safety-score-v1"
+    trip_id: str
+    behavior_profile_type: Literal["vehicle-linked behavior profile"] = (
+        "vehicle-linked behavior profile"
+    )
+    vehicle_profile_id: str
+    trip_start: datetime
+    trip_end: datetime
+    distance_km: float | None
+    score_status: Literal["scored", "insufficient_exposure"]
+    overall_score: float | None = Field(default=None, ge=0, le=100)
+    grade: Literal["A", "B", "C", "D", "E"] | None = None
+    categories: list[CategoryScore]
+    top_deductions: list[ScoreDeduction]
+    applied_caps: list[str] = Field(default_factory=list)
+    event_counts: dict[str, int]
+    scoring_version: str
+    quality_warnings: list[str] = Field(default_factory=list)
+
+
+class SafetyReminder(ContractModel):
+    code: str
+    priority: Literal["high", "normal"]
+    message: str
+
+
+class PreDriveBriefing(ContractModel):
+    contract_version: Literal["predrive-briefing-v1"] = "predrive-briefing-v1"
+    behavior_profile_type: Literal["vehicle-linked behavior profile"] = (
+        "vehicle-linked behavior profile"
+    )
+    vehicle_profile_id: str
+    effective_at: datetime
+    last_trip_score: float | None = None
+    last_trip_grade: Literal["A", "B", "C", "D", "E"] | None = None
+    recent_days: int = Field(gt=0)
+    recent_average_score: float | None = None
+    recent_scored_trip_count: int = Field(ge=0)
+    previous_average_score: float | None = None
+    trend: Literal["improving", "declining", "stable", "unavailable"]
+    weakest_category: str | None = None
+    weakest_category_score: float | None = None
+    recent_critical_event_counts: dict[str, int]
+    daily_goal: DailyImprovementGoal | None = None
+    reminders: list[SafetyReminder]
+    scoring_version: str
+
+
 def json_safe(model: BaseModel) -> dict[str, Any]:
     """Return a JSON-compatible mapping without custom encoders at call sites."""
 

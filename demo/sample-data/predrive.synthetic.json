@@ -28,5 +28,31 @@
   "display": {
     "target_label": "減少急減速",
     "rate_unit_label": "每 100 公里事件次數 · Synthetic"
+  },
+  "briefing": {
+    "last_trip_score": 78,
+    "last_trip_grade": "C",
+    "recent_days": 7,
+    "recent_average_score": 81,
+    "recent_scored_trip_count": 6,
+    "previous_average_score": 86,
+    "trend": "declining",
+    "trend_label": "退步中",
+    "weakest_category_label": "平順駕駛",
+    "weakest_category_score": 66,
+    "reminders": [
+      {
+        "priority": "high",
+        "message": "近 7 天平均分數比前一週下降 5 分，今天放慢節奏、預留更多反應時間。"
+      },
+      {
+        "priority": "high",
+        "message": "近 7 天有 1 次使用手機事件，行駛中請把手機放在固定架並開啟勿擾。"
+      },
+      {
+        "priority": "normal",
+        "message": "近 7 天「平順駕駛」平均 66 分，是目前最需要加強的分項：提早鬆油門、平順煞車與起步。"
+      }
+    ]
   }
 }

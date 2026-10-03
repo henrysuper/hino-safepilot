@@ -23,6 +23,18 @@ python -m hino_safepilot.analytics daily-goal --trip-id <local-trip-id>
 
 `build` refuses to overwrite `data/processed/analytics/`. Report commands default to the mock provider. `--provider gemini` is opt-in, requires the optional SDK and environment variables, and must use synthetic payloads until real-data egress receives human approval.
 
+Safety Score V1 and pre-drive briefing (see `docs/safety_score_v1.md`):
+
+```powershell
+python -m hino_safepilot.analytics score
+python -m hino_safepilot.analytics predrive --trip-id <local-trip-id>
+python -m hino_safepilot.analytics postdrive --trip-id <local-trip-id>
+python -m hino_safepilot.analytics export-demo
+python scripts/serve_demo.py
+```
+
+`score` reads the Phase 2.5 analytics artifacts, writes only `data/processed/safety_scores/`, and refuses to overwrite it. `export-demo` writes identifier-free views to `data/processed/demo_views/`; `serve_demo.py` serves `demo/` on 127.0.0.1 and exposes only those `*.local.json` files under `/local-data/`.
+
 Phase 3B-1 HINO-only dataset generation:
 
 ```powershell

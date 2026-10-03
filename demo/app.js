@@ -7,37 +7,52 @@ class DataProvider {
 }
 
 class StaticJsonProvider extends DataProvider {
-  constructor(basePath = "./sample-data") {
+  constructor(basePath = "./sample-data", suffix = "synthetic") {
     super();
     this.basePath = basePath;
+    this.suffix = suffix;
   }
 
   async load(viewName) {
-    const response = await fetch(`${this.basePath}/${viewName}.synthetic.json`, {
+    const response = await fetch(`${this.basePath}/${viewName}.${this.suffix}.json`, {
       cache: "no-store",
     });
     if (!response.ok) {
-      throw new Error(`Synthetic contract unavailable: ${viewName}`);
+      throw new Error(`Demo contract unavailable: ${viewName}`);
     }
     return response.json();
   }
 }
 
-const provider = new StaticJsonProvider();
+// ?source=local reads private views exported by `hino-analytics export-demo`, served
+// only by scripts/serve_demo.py. The driving view always stays synthetic.
+const useLocalData = new URLSearchParams(window.location.search).get("source") === "local";
+const syntheticProvider = new StaticJsonProvider();
+const localProvider = new StaticJsonProvider("./local-data", "local");
+const localViews = new Set(["predrive", "postdrive"]);
+const contractMarkers = {
+  synthetic: { prototype_marker: "SYNTHETIC_DEMO", data_classification: "synthetic" },
+  local: { prototype_marker: "LOCAL_PRIVATE_DERIVED", data_classification: "private_local" },
+};
 const requiredFields = {
-  predrive: ["prototype_marker", "daily_improvement_goal", "message"],
+  predrive: ["prototype_marker", "daily_improvement_goal", "message", "briefing"],
   driving: ["prototype_marker", "model_status", "prediction_contract"],
-  postdrive: ["prototype_marker", "trip_summary", "ai_report"],
+  postdrive: ["prototype_marker", "trip_summary", "ai_report", "safety_score"],
 };
 
-function assertContract(viewName, data) {
+function sourceFor(viewName) {
+  return useLocalData && localViews.has(viewName) ? "local" : "synthetic";
+}
+
+function assertContract(viewName, data, source) {
+  const marker = contractMarkers[source];
   if (
     !data ||
-    data.prototype_marker !== "SYNTHETIC_DEMO" ||
-    data.data_classification !== "synthetic" ||
+    data.prototype_marker !== marker.prototype_marker ||
+    data.data_classification !== marker.data_classification ||
     data.view !== viewName
   ) {
-    throw new Error("Only synthetic demo contracts are accepted");
+    throw new Error(`Only ${source} demo contracts are accepted here`);
   }
   for (const field of requiredFields[viewName]) {
     if (!(field in data)) throw new Error(`Missing required field: ${field}`);
@@ -58,18 +73,47 @@ function setText(id, value) {
   if (element) element.textContent = valueOrUnavailable(value);
 }
 
+function gradeClass(grade) {
+  return grade ? `grade-badge grade-${grade}` : "grade-badge";
+}
+
+function scoreTone(score) {
+  if (score === null || score === undefined || score >= 80) return "";
+  return score >= 60 ? "mid" : "low";
+}
+
+function renderBriefing(briefing) {
+  setText("brief-last-score", briefing.last_trip_score);
+  const lastGrade = document.getElementById("brief-last-grade");
+  lastGrade.textContent = briefing.last_trip_grade ?? "—";
+  lastGrade.className = gradeClass(briefing.last_trip_grade);
+  setText("brief-recent-label", `近 ${briefing.recent_days} 天平均`);
+  setText("brief-recent-score", briefing.recent_average_score);
+  const trend = document.getElementById("brief-trend");
+  trend.textContent = briefing.trend_label;
+  trend.className = `trend-chip trend-${briefing.trend}`;
+  setText("brief-weakest", briefing.weakest_category_label);
+
+  const list = document.getElementById("reminder-list");
+  list.replaceChildren();
+  for (const reminder of briefing.reminders) {
+    const item = document.createElement("li");
+    item.className = reminder.priority;
+    item.textContent = reminder.message;
+    list.append(item);
+  }
+}
+
 function renderPredrive(data) {
-  const goal = data.daily_improvement_goal;
-  const evidence = goal.evidence_summary;
+  renderBriefing(data.briefing);
   setText("goal-title", data.display.target_label);
+  if (!data.daily_improvement_goal || !data.message) {
+    setText("goal-message", "近期資料不足以選出改善目標，今天以平穩駕駛為主。");
+    setText("goal-action", "保持安全車距、依速限行駛。");
+    return;
+  }
   setText("goal-message", data.message.explanation);
   setText("goal-action", data.message.action);
-  setText("goal-priority", goal.priority_score.toFixed(2));
-  setText("goal-change", `${evidence.change_pct > 0 ? "+" : ""}${evidence.change_pct.toFixed(1)}%`);
-  setText("goal-recent", evidence.recent_rate.toFixed(1));
-  setText("goal-baseline", evidence.baseline_rate.toFixed(1));
-  setText("goal-unit", data.display.rate_unit_label);
-  document.getElementById("goal-progress").style.width = `${goal.priority_score * 100}%`;
 }
 
 function renderDriving(data) {
@@ -111,7 +155,80 @@ function renderDriving(data) {
   }
 }
 
-function renderPostdrive(data) {
+function renderSafetyScore(score) {
+  const ring = document.getElementById("score-ring");
+  const grade = document.getElementById("score-grade");
+  if (score.status !== "scored") {
+    setText("score-overall", "—");
+    grade.textContent = "—";
+    grade.className = "grade-badge large";
+    setText("score-note", "本趟行駛距離太短，不計算安全分數。");
+    ring.style.setProperty("--score", "0deg");
+  } else {
+    const tone = scoreTone(score.overall_score);
+    setText("score-overall", score.overall_score);
+    grade.textContent = score.grade;
+    grade.className = `grade-badge large grade-${score.grade}`;
+    ring.style.setProperty("--score", `${(score.overall_score / 100) * 360}deg`);
+    ring.style.setProperty(
+      "--ring",
+      tone === "low" ? "var(--red)" : tone === "mid" ? "var(--amber)" : "var(--green)"
+    );
+    setText(
+      "score-note",
+      score.grade === "A" || score.grade === "B"
+        ? "表現穩定，繼續保持。"
+        : "有明確可改善的項目，請看右側扣分原因。"
+    );
+  }
+
+  const bars = document.getElementById("category-bars");
+  bars.replaceChildren();
+  for (const category of score.categories) {
+    const row = document.createElement("div");
+    row.className = "category-bar";
+    const label = document.createElement("span");
+    label.textContent = category.label;
+    const track = document.createElement("div");
+    track.className = "bar-track";
+    const fill = document.createElement("i");
+    fill.className = scoreTone(category.score);
+    fill.style.width = `${category.score ?? 0}%`;
+    track.append(fill);
+    const value = document.createElement("strong");
+    value.textContent = category.score ?? "—";
+    row.append(label, track, value);
+    bars.append(row);
+  }
+
+  const deductions = document.getElementById("deduction-list");
+  deductions.replaceChildren();
+  if (!score.top_deductions.length) {
+    const item = document.createElement("li");
+    item.textContent =
+      score.status === "scored" ? "本趟沒有明顯扣分項目。" : "距離不足，無扣分明細。";
+    deductions.append(item);
+  }
+  for (const deduction of score.top_deductions) {
+    const item = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = `${deduction.label}（${deduction.category_label}）· ${deduction.observed_value} ${deduction.unit_label}`;
+    const points = document.createElement("strong");
+    points.textContent = `-${deduction.points_lost} 分`;
+    item.append(text, points);
+    deductions.append(item);
+  }
+  document.getElementById("score-caps").textContent = score.applied_caps.length
+    ? "本趟發生高風險事件（PCS／疲勞），總分上限為 79 分。"
+    : "";
+}
+
+function renderPostdrive(data, source) {
+  renderSafetyScore(data.safety_score);
+  setText(
+    "ai-label",
+    source === "local" ? `AI 行程摘要 · ${data.generation_mode}` : "AI 行程摘要 · Synthetic"
+  );
   const summary = data.trip_summary;
   const metrics = [
     ["行駛距離", summary.distance_km, " km"],
@@ -151,7 +268,9 @@ function renderPostdrive(data) {
   const context = summary.notable_event;
   setText(
     "event-context",
-    `行程約 ${context.trip_progress_pct}% 處出現${context.event_label}；事件前 30 秒平均速度為 ${context.previous_speed_mean_kph} km/h，之後呈現${context.next_behavior_label}。`
+    context
+      ? `行程約 ${context.trip_progress_pct}% 處出現${context.event_label}；事件前 30 秒平均速度為 ${valueOrUnavailable(context.previous_speed_mean_kph, " km/h")}，之後呈現${context.next_behavior_label}。`
+      : "本趟沒有需要特別說明的事件。"
   );
 }
 
@@ -175,16 +294,19 @@ async function initialize() {
     button.addEventListener("click", () => activateView(button.dataset.view));
   });
   try {
+    document.getElementById("local-banner").classList.toggle("hidden", !useLocalData);
     const [predrive, driving, postdrive] = await Promise.all(
       ["predrive", "driving", "postdrive"].map(async (viewName) => {
+        const source = sourceFor(viewName);
+        const provider = source === "local" ? localProvider : syntheticProvider;
         const data = await provider.load(viewName);
-        assertContract(viewName, data);
+        assertContract(viewName, data, source);
         return data;
       })
     );
     renderPredrive(predrive);
     renderDriving(driving);
-    renderPostdrive(postdrive);
+    renderPostdrive(postdrive, sourceFor("postdrive"));
   } catch (error) {
     console.error("SafePilot synthetic demo load failed", error);
     showError();

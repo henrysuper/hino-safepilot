@@ -32,6 +32,8 @@ SafePilot 是以商用車駕駛為核心的 AI 安全駕駛教練原型。
 - XGBoost risk model
 - SHAP explainability
 - Alert Policy offline simulation
+- Trip Safety Score V1（行後 0–100 分數與分項）
+- Pre-drive Safety Briefing（行前安全提醒）
 - Local HTML demo
 
 ### Risk Model
@@ -221,22 +223,32 @@ pytest
 目前提供簡單的 Local HTML Prototype：
 
 ```text
-行前目標
+行前安全提醒（近期分數、趨勢、提醒清單、今日改善目標）
 行駛中 60 秒風險
-行後報告
+行後安全報告（0–100 安全分數、4 個分項、扣分原因、AI 摘要）
 ```
 
 啟動：
 
 ```powershell
-python -m http.server 8000 --bind 127.0.0.1 --directory demo
+python scripts/serve_demo.py
 ```
 
 瀏覽：
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:8000                 # Synthetic Data
+http://127.0.0.1:8000/?source=local   # 本機 HINO 分析結果（需先 score + export-demo）
 ```
+
+本機模式的資料流程：
+
+```powershell
+python -m hino_safepilot.analytics score
+python -m hino_safepilot.analytics export-demo
+```
+
+分數公式與提醒規則見 [docs/safety_score_v1.md](docs/safety_score_v1.md)。
 
 ### Demo Data
 

@@ -37,6 +37,34 @@
     },
     "quality_warnings": []
   },
+  "safety_score": {
+    "status": "scored",
+    "overall_score": 82,
+    "grade": "B",
+    "categories": [
+      {"category": "safety_alerts", "label": "安全警示", "score": 95},
+      {"category": "smooth_driving", "label": "平順駕駛", "score": 68},
+      {"category": "speed_control", "label": "速度控制", "score": 80},
+      {"category": "vehicle_load", "label": "車輛負荷", "score": 90}
+    ],
+    "top_deductions": [
+      {
+        "label": "急減速",
+        "category_label": "平順駕駛",
+        "observed_value": 4.7,
+        "unit_label": "次／100 km",
+        "points_lost": 6.2
+      },
+      {
+        "label": "超速",
+        "category_label": "速度控制",
+        "observed_value": 2.3,
+        "unit_label": "次／100 km",
+        "points_lost": 4.0
+      }
+    ],
+    "applied_caps": []
+  },
   "next_goal": {
     "target_metric": "decelerate",
     "priority_score": 0.78
