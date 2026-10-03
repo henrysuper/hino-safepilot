@@ -151,6 +151,8 @@ main { padding: 42px 0 54px; }
 .deduction-list li span { color: var(--muted); font-size: .85rem; }
 .deduction-list li strong { color: var(--red-dark); white-space: nowrap; }
 .score-disclaimer { margin-top: 18px; }
+.deduction-definition { display: block; margin-top: 4px; color: var(--muted); font-size: .76rem; opacity: .85; }
+.score-warning { padding: 10px 12px; border-radius: 10px; background: #fff3f4; color: var(--red-dark); }
 .error-panel { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; padding: 18px 22px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); }
 .hidden { display: none !important; }
 footer { display: flex; justify-content: space-between; gap: 20px; padding: 24px 0 35px; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }

@@ -13,6 +13,7 @@ from hino_safepilot.ai.service import ReportService
 from .pipeline import build_analytics, load_daily_goal, load_trip_summary, resolve_config
 from .score_pipeline import (
     build_safety_scores,
+    load_event_definitions,
     load_predrive_briefing,
     load_trip_score,
     local_postdrive_view,
@@ -41,6 +42,9 @@ def _score_parsers(subcommands: argparse._SubParsersAction) -> None:
     export.add_argument("--trip-id", default=None, help="Default: a median-score trip")
     export.add_argument("--provider", choices=("mock", "gemini"), default=None)
     export.add_argument("--score-config", type=Path, default=Path("config/safety_score_v1.json"))
+    export.add_argument(
+        "--event-definitions", type=Path, default=Path("config/event_definitions_v1.json")
+    )
 
 
 def _run_score_command(args: argparse.Namespace) -> int:
@@ -100,7 +104,11 @@ def _run_score_command(args: argparse.Namespace) -> int:
             categories,
         ),
         "postdrive": local_postdrive_view(
-            summary, score, report.report.model_dump(mode="json"), report.generation_mode
+            summary,
+            score,
+            report.report.model_dump(mode="json"),
+            report.generation_mode,
+            load_event_definitions(repo / args.event_definitions),
         ),
     }
     output = repo / "data" / "processed" / "demo_views"

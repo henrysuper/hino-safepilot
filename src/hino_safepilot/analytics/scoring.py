@@ -36,12 +36,15 @@ ITEM_LABELS = {
     "distract": "分心",
     "phone": "使用手機",
     "seatbelt": "未繫安全帶",
+    "smoking": "抽菸",
+    "lens_ward_off": "鏡頭遮蔽",
     "fuel_efficiency": "燃油效率",
 }
 
 CRITICAL_REMINDERS = {
     "pcs": "近 {days} 天出現 {count} 次預警式防護（PCS）事件，今天請與前車保持更長的安全距離。",
     "fatigue": "近 {days} 天偵測到 {count} 次疲勞事件，出發前確認精神狀態，連續駕駛請依規定休息。",
+    "lens_ward_off": "近 {days} 天有 {count} 次車內鏡頭遮蔽，出發前請確認 DMS 鏡頭沒有被擋住。",
     "phone": "近 {days} 天有 {count} 次使用手機事件，行駛中請把手機放在固定架並開啟勿擾。",
     "distract": "近 {days} 天有 {count} 次分心事件，行駛中請保持視線在前方路況。",
 }
@@ -71,6 +74,21 @@ class SafetyScoreConfig:
     @property
     def predrive(self) -> dict[str, Any]:
         return self.raw["predrive"]
+
+    @property
+    def required_event_names(self) -> set[str]:
+        """Event names whose counts this config reads from a TripSummary."""
+
+        names = {
+            item_name
+            for category in self.categories.values()
+            for item_name, item in category["items"].items()
+            if item["kind"] == "events_per_100km"
+        }
+        names.update(self.raw.get("critical_event_caps", {}))
+        names.update(self.raw.get("dms_blocking_events", []))
+        names.update(self.predrive.get("critical_reminder_events", []))
+        return names
 
 
 def load_safety_score_config(path: Path) -> SafetyScoreConfig:
@@ -115,6 +133,10 @@ class SafetyScorer:
     def score_trip(self, summary: TripSummary) -> TripSafetyScore:
         counts = {event.event_name: event.count for event in summary.events}
         distance = summary.basics.distance_km.value
+        camera_blocked = any(
+            counts.get(name, 0) > 0 for name in self.config.raw.get("dms_blocking_events", [])
+        )
+        dms_warnings = ["DMS_CAMERA_BLOCKED_EVENTS_MAY_BE_UNDERCOUNTED"] if camera_blocked else []
         common = {
             "trip_id": summary.trip_id,
             "vehicle_profile_id": summary.vehicle_profile_id,
@@ -122,6 +144,7 @@ class SafetyScorer:
             "trip_end": summary.basics.trip_end,
             "distance_km": distance,
             "event_counts": counts,
+            "dms_reliability": "camera_blocked" if camera_blocked else "ok",
             "scoring_version": self.config.version,
         }
         if distance is None or distance < float(self.config.raw["minimum_scored_distance_km"]):
@@ -137,11 +160,11 @@ class SafetyScorer:
                     for name, category in self.config.categories.items()
                 ],
                 top_deductions=[],
-                quality_warnings=["TRIP_DISTANCE_BELOW_SCORING_MINIMUM"],
+                quality_warnings=["TRIP_DISTANCE_BELOW_SCORING_MINIMUM", *dms_warnings],
             )
 
         rate_distance = max(distance, float(self.config.raw["rate_distance_floor_km"]))
-        warnings: list[str] = []
+        warnings: list[str] = list(dms_warnings)
         if distance < rate_distance:
             warnings.append("RATE_DISTANCE_FLOOR_APPLIED")
         categories: list[CategoryScore] = []

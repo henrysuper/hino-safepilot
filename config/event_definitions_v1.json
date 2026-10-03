@@ -1,0 +1,19 @@
+{
+  "version": "event-definitions-v1",
+  "source": "Organizer event type table (Event Type_0929 supplement), kept locally under data/reference/ and not committed. Thresholds are paraphrased; the vehicle unit applies them before events reach the telemetry.",
+  "events": {
+    "accelerate": {"code": 6, "label": "急加速", "definition": "每秒車速增加超過 10 km/h，且連續 2 筆資料成立"},
+    "decelerate": {"code": 7, "label": "急減速", "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"},
+    "speeding": {"code": 8, "label": "超速", "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"},
+    "engine_overloading": {"code": 11, "label": "引擎過載", "definition": "引擎負載 > 83% 持續 5 秒"},
+    "idle": {"code": 2, "label": "怠速比例", "definition": "引擎運轉、車速為 0 的時間占比（怠速事件為持續 5 分鐘）"},
+    "fatigue": {"code": 12, "label": "疲勞", "definition": "車內 DMS 鏡頭偵測（主辦方未提供數值門檻）"},
+    "seatbelt": {"code": 13, "label": "未繫安全帶", "definition": "車內 DMS 鏡頭偵測（主辦方未提供數值門檻）"},
+    "phone": {"code": 14, "label": "使用手機", "definition": "車內 DMS 鏡頭偵測使用通訊（主辦方未提供數值門檻）"},
+    "smoking": {"code": 15, "label": "抽菸", "definition": "車內 DMS 鏡頭偵測（主辦方未提供數值門檻）"},
+    "distract": {"code": 16, "label": "分心", "definition": "車內 DMS 鏡頭偵測（主辦方未提供數值門檻）"},
+    "lens_ward_off": {"code": 17, "label": "鏡頭遮蔽", "definition": "DMS 鏡頭被遮蔽；期間疲勞、手機、分心等偵測可能失效"},
+    "pcs": {"code": 19, "label": "預警式防護（PCS）", "definition": "車輛預警式防護系統觸發"},
+    "ldws": {"code": 20, "label": "車道偏移警示", "definition": "車道偏離警示系統觸發"}
+  }
+}

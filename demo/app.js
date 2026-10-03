@@ -213,14 +213,26 @@ function renderSafetyScore(score) {
     const item = document.createElement("li");
     const text = document.createElement("span");
     text.textContent = `${deduction.label}（${deduction.category_label}）· ${deduction.observed_value} ${deduction.unit_label}`;
+    if (deduction.definition) {
+      const definition = document.createElement("small");
+      definition.className = "deduction-definition";
+      definition.textContent = `定義：${deduction.definition}`;
+      text.append(definition);
+    }
     const points = document.createElement("strong");
     points.textContent = `-${deduction.points_lost} 分`;
     item.append(text, points);
     deductions.append(item);
   }
-  document.getElementById("score-caps").textContent = score.applied_caps.length
-    ? "本趟發生高風險事件（PCS／疲勞），總分上限為 79 分。"
-    : "";
+  const notes = score.applied_caps.map(
+    (cap) => `本趟出現${cap.label}事件，總分上限為 ${cap.cap} 分。`
+  );
+  if (score.dms_reliability === "camera_blocked") {
+    notes.push("車內鏡頭曾被遮蔽，疲勞、手機、分心等偵測可能偏少。");
+  }
+  const caps = document.getElementById("score-caps");
+  caps.textContent = notes.join(" ");
+  caps.classList.toggle("score-warning", notes.length > 0);
 }
 
 function renderPostdrive(data, source) {

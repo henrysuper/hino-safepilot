@@ -68,6 +68,11 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in handle if line.strip()]
 
 
+def load_event_definitions(path: Path) -> dict[str, str]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return {name: str(event["definition"]) for name, event in raw["events"].items()}
+
+
 def build_safety_scores(config: ScoreBuildConfig) -> dict[str, Any]:
     """Score every trip and build past-only briefings. Performs no API calls."""
 
@@ -82,6 +87,13 @@ def build_safety_scores(config: ScoreBuildConfig) -> dict[str, Any]:
     score_config = load_safety_score_config(config.score_config_path)
     scorer = SafetyScorer(score_config)
     summaries = [TripSummary.model_validate(record) for record in _read_jsonl(summaries_path)]
+    tracked = {event.event_name for summary in summaries[:1] for event in summary.events}
+    missing = sorted(score_config.required_event_names - tracked)
+    if summaries and missing:
+        raise ValueError(
+            f"Trip summaries do not track {missing}; delete data/processed/analytics "
+            "and rerun `hino-analytics build` before scoring"
+        )
     goals = {
         record["subject_trip_id"]: DailyImprovementGoal.model_validate(record["goal"])
         for record in _read_jsonl(goals_path)
@@ -197,8 +209,16 @@ def _round(value: float | None, digits: int = 1) -> float | None:
     return None if value is None else round(value, digits)
 
 
-def score_view(score: TripSafetyScore) -> dict[str, Any]:
+def _cap_view(code: str) -> dict[str, Any]:
+    event, _, cap = code.rpartition("_EVENT_CAP_")
+    return {"label": ITEM_LABELS.get(event.lower(), event.lower()), "cap": int(cap)}
+
+
+def score_view(
+    score: TripSafetyScore, definitions: dict[str, str] | None = None
+) -> dict[str, Any]:
     labels = {category.category: category.label for category in score.categories}
+    definitions = definitions or {}
     return {
         "status": score.score_status,
         "overall_score": _round(score.overall_score, 0),
@@ -214,10 +234,12 @@ def score_view(score: TripSafetyScore) -> dict[str, Any]:
                 "observed_value": _round(deduction.observed_value),
                 "unit_label": UNIT_LABELS.get(deduction.unit, deduction.unit),
                 "points_lost": _round(deduction.points_lost),
+                "definition": definitions.get(deduction.item),
             }
             for deduction in score.top_deductions
         ],
-        "applied_caps": score.applied_caps,
+        "applied_caps": [_cap_view(code) for code in score.applied_caps],
+        "dms_reliability": score.dms_reliability,
     }
 
 
@@ -284,6 +306,7 @@ def local_postdrive_view(
     score: TripSafetyScore,
     ai_report: dict[str, Any],
     generation_mode: str,
+    definitions: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     notable = summary.notable_events[0] if summary.notable_events else None
     return {
@@ -328,7 +351,7 @@ def local_postdrive_view(
             else None,
             "quality_warnings": summary.quality_warnings,
         },
-        "safety_score": score_view(score),
+        "safety_score": score_view(score, definitions),
         "ai_report": ai_report,
         "generation_mode": generation_mode,
     }

@@ -190,6 +190,7 @@ class TripSafetyScore(ContractModel):
     top_deductions: list[ScoreDeduction]
     applied_caps: list[str] = Field(default_factory=list)
     event_counts: dict[str, int]
+    dms_reliability: Literal["ok", "camera_blocked"] = "ok"
     scoring_version: str
     quality_warnings: list[str] = Field(default_factory=list)
 

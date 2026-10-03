@@ -39,12 +39,12 @@ Candidate mappings:
 
 | Product concept | Organizer event candidate | Proposed onset identity | Open issue |
 |---|---|---|---|
-| Hard braking | 7 `decelerate` | vehicle + journey + type + `startTime` | Whether all organizer急減速 events are sufficiently severe to call hard braking is `UNRESOLVED`. |
+| Hard braking | 7 `decelerate` | vehicle + journey + type + `startTime` | **Organizer-confirmed** (event table 0929): onset requires a speed drop of at least 15 km/h per second on two consecutive samples (≈0.43 g), so organizer急減速 qualifies as hard braking. |
 | PCS | 19 `pcs` | same | Extremely sparse; feasibility and alert meaning require review. |
 | LDWS | 20 `ldws` | same | Repeated warning semantics and sensor availability are `UNRESOLVED`. |
 | Fatigue | 12 `fatigue` | same | Event-generation policy and repeated-warning suppression are `UNRESOLVED`. |
-| Distract | 16 `distract` | same | Whether phone/smoking should be separate or part of distraction is `UNRESOLVED`. |
-| Sustained speeding | 8 `speeding` | threshold-crossing time, not necessarily raw start | Minimum duration, speed margin, and when a warning becomes label-positive are `UNRESOLVED`. |
+| Distract | 16 `distract` | same | **Organizer-confirmed**: 使用通訊 (14 `phone`), 抽菸 (15 `smoking`) and 分心 (16 `distract`) are separate event types. DMS thresholds are not published; detection is unavailable while 17 `lens_ward_off` (camera blocked) is active. |
+| Sustained speeding | 8 `speeding` | threshold-crossing time, not necessarily raw start | **Organizer-confirmed** trigger: speed ≥ road limit +10 km/h, or ≥ 107 km/h, sustained 5 s; release at ≤ limit (or ≤ 95 km/h) for 5 s. When a warning becomes label-positive remains a product decision. |
 | Compound risk | derived from reviewed onsets/active states | derived episode ID | Combination rule, window, severity, and minimum support are `UNRESOLVED`. |
 
 Advantages: preserves class-specific behavior and supports class-specific thresholds. Risks: severe imbalance and some classes may not span enough vehicles/time for defensible holdouts.

@@ -60,7 +60,7 @@ This prevents a later event record with a backfilled start time from leaking int
 
 ## Speed-limit decision
 
-`gps.speedLimit` unit and zero semantics remain `UNRESOLVED`. Therefore V0 emits no speed-to-limit margin, overspeed fraction, or inferred speed-limit availability feature. Past speeding onset/observation counts are allowed predictors, but speeding is not a V0 positive label.
+`gps.speedLimit` unit and zero semantics remain `UNRESOLVED`. The organizer event table (0929) defines speeding as speed ≥ limit +10 km/h **or** ≥ 107 km/h for 5 s; the absolute 107 km/h fallback is consistent with treating a zero limit as unavailable, but this is not explicitly confirmed. Therefore V0 emits no speed-to-limit margin, overspeed fraction, or inferred speed-limit availability feature. Past speeding onset/observation counts are allowed predictors, but speeding is not a V0 positive label.
 
 ## Labels
 

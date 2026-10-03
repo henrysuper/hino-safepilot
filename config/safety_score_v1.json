@@ -1,5 +1,5 @@
 {
-  "version": "safety-score-v1",
+  "version": "safety-score-v1.1",
   "minimum_scored_distance_km": 2.0,
   "rate_distance_floor_km": 10.0,
   "reference_score": 70.0,
@@ -9,11 +9,12 @@
       "label": "安全警示",
       "weight": 0.40,
       "items": {
-        "pcs": {"weight": 0.30, "reference": 1.0, "kind": "events_per_100km"},
-        "fatigue": {"weight": 0.25, "reference": 3.0, "kind": "events_per_100km"},
-        "phone": {"weight": 0.15, "reference": 5.0, "kind": "events_per_100km"},
-        "distract": {"weight": 0.15, "reference": 10.0, "kind": "events_per_100km"},
+        "pcs": {"weight": 0.27, "reference": 1.0, "kind": "events_per_100km"},
+        "fatigue": {"weight": 0.22, "reference": 3.0, "kind": "events_per_100km"},
+        "phone": {"weight": 0.13, "reference": 5.0, "kind": "events_per_100km"},
+        "distract": {"weight": 0.13, "reference": 10.0, "kind": "events_per_100km"},
         "ldws": {"weight": 0.10, "reference": 12.0, "kind": "events_per_100km"},
+        "lens_ward_off": {"weight": 0.10, "reference": 5.0, "kind": "events_per_100km"},
         "seatbelt": {"weight": 0.05, "reference": 20.0, "kind": "events_per_100km"}
       }
     },
@@ -43,12 +44,15 @@
   },
   "critical_event_caps": {
     "pcs": 79,
-    "fatigue": 79
+    "fatigue": 79,
+    "lens_ward_off": 89
   },
+  "dms_blocking_events": ["lens_ward_off"],
+  "dms_dependent_events": ["fatigue", "phone", "distract", "smoking", "seatbelt"],
   "predrive": {
     "recent_days": 7,
     "minimum_recent_scored_trips": 1,
-    "critical_reminder_events": ["pcs", "fatigue", "phone", "distract"]
+    "critical_reminder_events": ["pcs", "fatigue", "lens_ward_off", "phone", "distract"]
   },
   "disclaimer": "UNRESOLVED: category weights, reference rates and critical caps are prototype values loosely informed by the local fleet distribution; they are not validated by HINO or accident outcome data."
 }

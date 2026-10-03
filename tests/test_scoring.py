@@ -152,6 +152,70 @@ def test_critical_event_caps_overall_score(scorer) -> None:
     assert score.applied_caps == ["PCS_EVENT_CAP_79"]
 
 
+def test_camera_blocking_caps_score_and_flags_dms(scorer) -> None:
+    score = scorer.score_trip(summary_for(lens_ward_off=1))
+    assert score.dms_reliability == "camera_blocked"
+    assert "DMS_CAMERA_BLOCKED_EVENTS_MAY_BE_UNDERCOUNTED" in score.quality_warnings
+    assert score.overall_score <= 89
+    assert score.grade != "A"
+    assert "LENS_WARD_OFF_EVENT_CAP_89" in score.applied_caps
+
+
+def test_heavy_camera_blocking_lowers_safety_category(scorer) -> None:
+    light = scorer.score_trip(summary_for(lens_ward_off=1))
+    heavy = scorer.score_trip(summary_for(lens_ward_off=40))
+    category = lambda score: next(c.score for c in score.categories if c.category == "safety_alerts")
+    assert category(heavy) < category(light) < 100
+    assert heavy.overall_score < light.overall_score
+
+
+def test_clean_trip_keeps_dms_reliable(scorer) -> None:
+    score = scorer.score_trip(summary_for())
+    assert score.dms_reliability == "ok"
+    assert not any("DMS" in warning for warning in score.quality_warnings)
+
+
+def test_config_declares_every_event_it_reads(config) -> None:
+    from hino_safepilot.analytics.engine import TRACKED_EVENT_NAMES
+
+    assert config.required_event_names <= set(TRACKED_EVENT_NAMES)
+    definitions = json.loads((ROOT / "config" / "event_definitions_v1.json").read_text(encoding="utf-8"))
+    scored_items = {
+        item for category in config.categories.values() for item in category["items"]
+    }
+    assert scored_items <= set(definitions["events"])
+
+
+def test_scoring_refuses_stale_analytics_without_new_events(tmp_path) -> None:
+    from hino_safepilot.analytics.score_pipeline import build_safety_scores
+
+    summary = summary_for()
+    stale = summary.model_copy(
+        update={"events": [event for event in summary.events if event.event_name != "lens_ward_off"]}
+    )
+    analytics = tmp_path / "data" / "processed" / "analytics"
+    analytics.mkdir(parents=True)
+    (analytics / "trip_summaries.jsonl").write_text(stale.model_dump_json() + "\n", encoding="utf-8")
+    (analytics / "improvement_goals.jsonl").write_text("", encoding="utf-8")
+    config = resolve_score_config(tmp_path, score_config_path=CONFIG_PATH)
+    with pytest.raises(ValueError, match="lens_ward_off"):
+        build_safety_scores(config)
+    assert not config.output_root.exists()
+
+
+def test_postdrive_view_includes_definitions_and_cap_labels(scorer) -> None:
+    from hino_safepilot.analytics.score_pipeline import load_event_definitions
+
+    summary = summary_for(decelerate=6, pcs=1)
+    score = scorer.score_trip(summary)
+    definitions = load_event_definitions(ROOT / "config" / "event_definitions_v1.json")
+    view = local_postdrive_view(summary, score, {"summary": "synthetic"}, "mock", definitions)
+    deduction = next(d for d in view["safety_score"]["top_deductions"] if d["label"] == "急減速")
+    assert "15 km/h" in deduction["definition"]
+    assert view["safety_score"]["applied_caps"] == [{"label": "預警式防護（PCS）", "cap": 79}]
+    assert view["safety_score"]["dms_reliability"] == "ok"
+
+
 def test_config_rejects_weights_that_do_not_sum_to_one(tmp_path) -> None:
     raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     raw["categories"]["speed_control"]["weight"] = 0.5

@@ -87,6 +87,13 @@ py -3.12 -m venv .venv
 | `data interim` 內的資料夾 | `data\interim\` |
 | `data processed` 內的資料夾 | `data\processed\` |
 | `models risk` 內的檔案 | `models\risk\`（`v0_logistic`、`v1_xgboost` 各自對應） |
+| `Event Type_0929補充.xlsx`（主辦方事件定義表） | `data\reference\` |
+
+Google 雲端硬碟會在每個資料夾放 `desktop.ini`，讀取 parquet 時會出錯（`Parquet magic bytes not found`）。複製完請在專案根目錄執行一次清除：
+
+```powershell
+Get-ChildItem data, models -Recurse -Force -Filter desktop.ini | Remove-Item -Force
+```
 
 放好後確認以下檔案存在：
 
@@ -110,6 +117,17 @@ data\processed\analytics\improvement_goals.jsonl
 ---
 
 # 6. 執行安全分數與 Demo
+
+### 6.0 重建行程分析（Safety Score V1.1 起需要做一次）
+
+雲端硬碟上的 `data\processed\analytics` 是舊版，沒有統計「鏡頭遮蔽」和「抽菸」事件。請刪除後重建（約 20–30 秒）：
+
+```powershell
+Remove-Item -Recurse -Force data\processed\analytics
+.venv\Scripts\python.exe -m hino_safepilot.analytics build
+```
+
+成功會印出 `trip_summary_count`。若跳過這步，6.1 會停止並提示要重建。
 
 ### 6.1 計算安全分數
 
@@ -150,6 +168,8 @@ data\processed\analytics\improvement_goals.jsonl
 |---|---|
 | `Refusing to overwrite safety score output` | 已算過；要重算請刪除 `data\processed\safety_scores` 後重跑 6.1 |
 | `Run hino-analytics build first` | `data\processed\analytics` 沒放好，回到第 4 節 |
+| `Trip summaries do not track ['lens_ward_off', ...]` | 行程分析是舊版，做 6.0 |
+| `Parquet magic bytes not found` | 有 `desktop.ini`，執行第 4 節的清除指令 |
 | 網頁顯示「資料暫時無法取得」 | 確認網址有 `?source=local`，且 6.2 已執行 |
 | `Address already in use` | 改用 `scripts\serve_demo.py --port 8001`，網址改成 8001 |
 | `py` 不是可辨識的指令 | Python 安裝時未勾選 PATH，請重新安裝 |

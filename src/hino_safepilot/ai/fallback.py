@@ -21,6 +21,9 @@ LABELS = {
     "fatigue": "疲勞事件",
     "distract": "分心事件",
     "phone": "使用手機事件",
+    "seatbelt": "未繫安全帶事件",
+    "smoking": "抽菸事件",
+    "lens_ward_off": "鏡頭遮蔽事件",
     "fuel_efficiency": "燃油效率",
 }
 

@@ -42,10 +42,26 @@
     "overall_score": 82,
     "grade": "B",
     "categories": [
-      {"category": "safety_alerts", "label": "安全警示", "score": 95},
-      {"category": "smooth_driving", "label": "平順駕駛", "score": 68},
-      {"category": "speed_control", "label": "速度控制", "score": 80},
-      {"category": "vehicle_load", "label": "車輛負荷", "score": 90}
+      {
+        "category": "safety_alerts",
+        "label": "安全警示",
+        "score": 95
+      },
+      {
+        "category": "smooth_driving",
+        "label": "平順駕駛",
+        "score": 68
+      },
+      {
+        "category": "speed_control",
+        "label": "速度控制",
+        "score": 80
+      },
+      {
+        "category": "vehicle_load",
+        "label": "車輛負荷",
+        "score": 90
+      }
     ],
     "top_deductions": [
       {
@@ -53,17 +69,20 @@
         "category_label": "平順駕駛",
         "observed_value": 4.7,
         "unit_label": "次／100 km",
-        "points_lost": 6.2
+        "points_lost": 6.2,
+        "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
       },
       {
         "label": "超速",
         "category_label": "速度控制",
         "observed_value": 2.3,
         "unit_label": "次／100 km",
-        "points_lost": 4.0
+        "points_lost": 4.0,
+        "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
       }
     ],
-    "applied_caps": []
+    "applied_caps": [],
+    "dms_reliability": "ok"
   },
   "next_goal": {
     "target_metric": "decelerate",

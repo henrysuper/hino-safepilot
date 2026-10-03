@@ -31,6 +31,8 @@ TRACKED_EVENT_NAMES = (
     "distract",
     "pcs",
     "ldws",
+    "smoking",
+    "lens_ward_off",
 )
 
 NOTABLE_EVENT_PRIORITY = {
@@ -44,6 +46,8 @@ NOTABLE_EVENT_PRIORITY = {
     "accelerate": 7,
     "engine_overloading": 8,
     "seatbelt": 9,
+    "smoking": 10,
+    "lens_ward_off": 11,
 }
 
 
