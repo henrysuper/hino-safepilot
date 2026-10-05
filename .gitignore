@@ -1,0 +1,34 @@
+# ---- Private competition data (do NOT commit; also exceeds GitHub 100MB) ----
+data/
+models/
+reports/
+
+# ---- Local environment ----
+.venv/
+.env
+*.env
+
+# ---- Secrets / caches ----
+*ors_cache*.json
+geocode_cache.json
+task_ors_cache.json
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Scratch / verification leftovers ----
+_*.py
+_*.txt
+_*.json

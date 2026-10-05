@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HINO 油耗預測與智慧派車 · 展示</title>
+<style>
+  :root {
+    --bg:#0f1420; --card:#1a2130; --card2:#212a3d; --line:#2c364b;
+    --text:#e8edf5; --muted:#8b97ad; --accent:#3ddc97; --warn:#ffb454; --bad:#ff6b6b; --blue:#4dabf7;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5; padding:24px; max-width:1180px; margin:0 auto; }
+  header { margin-bottom:8px; }
+  h1 { font-size:22px; font-weight:700; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .mock-note { color:var(--warn); font-size:12px; margin-top:6px; }
+  h2 { font-size:16px; margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+  h2 .tag { font-size:11px; background:var(--card2); color:var(--muted); padding:2px 8px; border-radius:10px; font-weight:500; }
+  h2 .real { background:rgba(61,220,151,.15); color:var(--accent); }
+  h2 .mock { background:rgba(255,180,84,.15); color:var(--warn); }
+  .grid { display:grid; gap:12px; }
+  .cards { grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .stat .k { color:var(--muted); font-size:12px; }
+  .stat .v { font-size:24px; font-weight:700; margin-top:4px; }
+  .stat .v small { font-size:13px; color:var(--muted); font-weight:400; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px; font-weight:600; }
+  .ok{background:rgba(61,220,151,.15);color:var(--accent)}
+  .caution{background:rgba(255,180,84,.18);color:var(--warn)}
+  .block{background:rgba(255,107,107,.18);color:var(--bad)}
+  .bar { height:7px; background:var(--card2); border-radius:4px; overflow:hidden; margin-top:6px; }
+  .bar > i { display:block; height:100%; border-radius:4px; background:var(--blue); }
+  .two { grid-template-columns:1fr 1fr; }
+  .compare { display:flex; gap:14px; }
+  .compare .box { flex:1; background:var(--card2); border-radius:10px; padding:14px; }
+  .compare .box .lbl { font-size:12px; color:var(--muted); }
+  .compare .box .big { font-size:28px; font-weight:800; margin-top:4px; }
+  .compare .fam .big { color:var(--accent); }
+  .compare .new .big { color:var(--warn); }
+  .feat-row { display:flex; align-items:center; gap:10px; margin:7px 0; font-size:13px; }
+  .feat-row .name { width:160px; color:var(--muted); }
+  .feat-row .track { flex:1; height:9px; background:var(--card2); border-radius:5px; overflow:hidden; }
+  .feat-row .track > i { display:block; height:100%; background:var(--blue); border-radius:5px; }
+  .feat-row .pct { width:48px; text-align:right; font-variant-numeric:tabular-nums; }
+  tr.excluded td { color:var(--muted); background:rgba(255,107,107,.06); }
+  .best td { background:rgba(61,220,151,.08); }
+  .foot { color:var(--muted); font-size:12px; margin-top:32px; border-top:1px solid var(--line); padding-top:14px; }
+  .note { color:var(--muted); font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚛 HINO 油耗預測與智慧派車 · 展示 Dashboard</h1>
+  <div class="sub" id="sub">載入中…</div>
+  <div class="mock-note" id="mock-note"></div>
+</header>
+
+<h2>整體概況 <span class="tag real">真實資料</span></h2>
+<div class="grid cards" id="stats"></div>
+
+<h2>模型準度 <span class="tag real">真實</span> <span class="tag">誠實區分熟悉 / 新路線</span></h2>
+<div class="card">
+  <div class="compare" id="accuracy"></div>
+  <div class="note" id="accuracy-note"></div>
+  <div style="margin-top:14px"><b style="font-size:13px">各車型整趟油耗 MAPE(發派模式)</b></div>
+  <div class="grid cards" id="by-type" style="margin-top:8px"></div>
+</div>
+
+<h2>模型看重什麼 <span class="tag real">真實 · SHAP</span></h2>
+<div class="card" id="features"></div>
+
+<h2>車隊健康度 <span class="tag real">真實 · 非油耗訊號</span> <span class="tag">派車硬門檻</span></h2>
+<div class="grid two">
+  <div class="card">
+    <div class="grid cards" id="health-counts"></div>
+    <div class="note" id="health-bands"></div>
+  </div>
+  <div class="card" style="max-height:320px;overflow:auto"><table id="health-table">
+    <thead><tr><th>車輛</th><th class="num">車況分</th><th>分級</th></tr></thead><tbody></tbody>
+  </table></div>
+</div>
+
+<h2>智慧派車示範 <span class="tag" id="dispatch-fuel-tag"></span> <span class="tag real">健康度為真實</span></h2>
+<div class="card">
+  <div class="note" id="dispatch-task"></div>
+  <table id="dispatch"><thead><tr>
+    <th>排名</th><th>車輛</th><th class="num" id="dispatch-fuel-col">預測油耗 (L)</th><th class="num">派車油耗 (L)</th>
+    <th class="num">車況分</th><th>車況</th>
+  </tr></thead><tbody></tbody></table>
+  <div class="note" id="dispatch-note"></div>
+</div>
+
+<h2>油耗分數 <span class="tag real">真實 · 測試期</span></h2>
+<div class="grid two">
+  <div class="card">
+    <div class="grid cards" id="score-cards"></div>
+    <div class="note" id="score-formula"></div>
+  </div>
+  <div class="card" style="max-height:320px;overflow:auto"><table id="score-table">
+    <thead><tr><th>車輛</th><th class="num">趟數</th><th class="num">里程</th><th class="num">分數</th></tr></thead><tbody></tbody>
+  </table></div>
+</div>
+
+<h2>真實行程回測 <span class="tag real">真實 · ORS</span></h2>
+<div class="card" id="backtest"></div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+const num = (v, d = 1) => (v == null ? "–" : Number(v).toFixed(d));
+fetch("dashboard_data.json").then(r => r.json()).then(render).catch(() => {
+  document.getElementById("sub").textContent = "無法載入 dashboard_data.json;請先執行 python scripts/export_dashboard.py 並用本機伺服器開啟。";
+});
+
+function render(d) {
+  document.getElementById("sub").textContent = `${d.subtitle}｜${d.data_scope.vehicles} 台車 · 測試期 ${d.data_scope.test_trips_ge10km} 趟(≥10km)· ${d.data_scope.note}`;
+  document.getElementById("mock-note").textContent = "※ " + d.mock_notice;
+
+  const m = d.model, fam = m.familiar_route, nw = m.new_route;
+  document.getElementById("stats").innerHTML = [
+    stat("熟悉路線 油耗MAPE", num(fam.trip_mape_pct), "%"),
+    stat("排序正確率", num(fam.ranking_accuracy_pct), "% · 選對較省的車"),
+    stat("全新路線 油耗MAPE", num(nw.trip_mape_pct), "% · 空間外推"),
+    stat("車隊健康", `${d.health.counts_label["良好"]}/${d.health.counts_label["注意"]}/${d.health.counts_label["待檢修"]}`, "良好/注意/待檢修"),
+    stat("路段模型", m.segment_km + " km", "XGBoost 單調約束"),
+  ].join("");
+
+  // accuracy compare
+  document.getElementById("accuracy").innerHTML = `
+    <div class="box fam"><div class="lbl">${fam.label}</div><div class="big">${num(fam.trip_mape_pct)}%</div>
+      <div class="lbl">網格覆蓋 ${fam.grid_coverage} · ${fam.trips} 趟</div></div>
+    <div class="box new"><div class="lbl">${nw.label}</div><div class="big">${num(nw.trip_mape_pct)}%</div>
+      <div class="lbl">網格覆蓋 ${nw.grid_coverage}</div></div>`;
+  document.getElementById("accuracy-note").textContent =
+    "派車實務介於兩者之間:慣用路線接近左值,全新路線接近右值。真實回測顯示誤差大頭是『規劃路線 ≠ 實際路線』,非油耗模型本身。";
+  document.getElementById("by-type").innerHTML = Object.entries(m.by_vehicle_type_mape_pct)
+    .map(([t, v]) => stat(`${t} 系`, num(v), "% MAPE")).join("");
+
+  // features
+  const maxShap = Math.max(...m.feature_importance.map(f => f.shap_pct));
+  document.getElementById("features").innerHTML = m.feature_importance.map(f => `
+    <div class="feat-row"><span class="name">${featLabel(f.feature)}</span>
+      <span class="track"><i style="width:${(f.shap_pct / maxShap * 100).toFixed(0)}%"></i></span>
+      <span class="pct">${num(f.shap_pct)}%</span></div>`).join("");
+
+  // health
+  const h = d.health;
+  document.getElementById("health-counts").innerHTML = [
+    stat("良好", h.counts_label["良好"], "台"), stat("注意", h.counts_label["注意"], "台"), stat("待檢修", h.counts_label["待檢修"], "台"),
+  ].join("");
+  document.getElementById("health-bands").textContent =
+    `分級門檻:待檢修 < ${num(h.bands.block_below)} 分、注意 < ${num(h.bands.caution_below)} 分(由車隊分布決定)。${h.provenance}`;
+  document.querySelector("#health-table tbody").innerHTML = h.vehicles.map(v => `
+    <tr><td>${v.vehicle}</td><td class="num">${num(v.health_score)}</td><td><span class="pill ${v.grade}">${v.grade_label}</span></td></tr>`).join("");
+
+  // dispatch demo
+  const dd = d.dispatch_demo;
+  const tag = document.getElementById("dispatch-fuel-tag");
+  if (dd.fuel_is_real) { tag.className = "tag real"; tag.textContent = "油耗為真實(模型預測)"; document.getElementById("dispatch-fuel-col").textContent = "預測油耗 (L)"; }
+  else { tag.className = "tag mock"; tag.textContent = "油耗為示意"; document.getElementById("dispatch-fuel-col").textContent = "示意油耗 (L)"; }
+  document.getElementById("dispatch-task").textContent = dd.task;
+  document.querySelector("#dispatch tbody").innerHTML = dd.rows.map((r, i) => `
+    <tr class="${r.excluded ? "excluded" : i === 0 ? "best" : ""}">
+      <td>${r.excluded ? "—" : i + 1}</td><td>${r.vehicle}</td>
+      <td class="num">${num(r.predicted_fuel_L)}</td>
+      <td class="num">${num(r.dispatch_fuel_L)}${Math.abs(r.dispatch_fuel_L - r.predicted_fuel_L) > 0.01 ? ' <span class="pill caution">+風險</span>' : ""}</td>
+      <td class="num">${num(r.health_score)}</td>
+      <td><span class="pill ${r.grade}">${r.grade_label}</span>${r.excluded ? ' <span class="pill block">不派</span>' : ""}</td>
+    </tr>`).join("");
+  document.getElementById("dispatch-note").textContent = dd.note + "｜" + dd.provenance;
+
+  // scores
+  const sc = d.score;
+  document.getElementById("score-cards").innerHTML = Object.entries(sc.mean_by_type)
+    .map(([t, v]) => stat(`${t} 系均分`, num(v), "/ 100")).join("")
+    + stat("中位數", num(sc.quantiles["0.5"]), "/ 100");
+  document.getElementById("score-formula").textContent = "公式:" + sc.formula + "｜" + sc.provenance;
+  document.querySelector("#score-table tbody").innerHTML = sc.vehicle_scores.map(v => `
+    <tr><td>${v.vehicle}</td><td class="num">${v.trips}</td><td class="num">${num(v.km)}</td>
+      <td class="num"><b>${num(v.score)}</b><div class="bar"><i style="width:${v.score}%"></i></div></td></tr>`).join("");
+
+  // backtest
+  const b = d.backtest;
+  document.getElementById("backtest").innerHTML = `
+    <div class="grid cards">
+      ${stat("ORS 發派 MAPE", num(b.ors_dispatch_mape_pct), "% · 只給起訖點")}
+      ${stat("路線有對上者", num(b.route_matched_mape_pct), "% · 司機照規劃開")}
+    </div>
+    <div class="note">${b.note}｜${b.provenance}</div>`;
+
+  document.getElementById("foot").textContent =
+    "資料來源:HINO iTRAQ 行車紀錄 · 行程識別 = enabledCode + journeyCode · 模型:XGBoost 3km 路段(單調約束)· 車輛以代號顯示(去識別化)";
+}
+
+function stat(k, v, unit) {
+  return `<div class="card stat"><div class="k">${k}</div><div class="v">${v} <small>${unit || ""}</small></div></div>`;
+}
+function featLabel(f) {
+  return {
+    vehicle_type: "車型", congestion_index: "塞車程度", vehicle_efficiency_offset: "車輛效率偏差",
+    avg_slope: "平均坡度", idle_min_per_km: "怠速", elevation_gain_m: "累積爬升", segment_km: "路段長度",
+    health_score: "車況健康度", harsh_acc_per_km: "急加速", harsh_brake_per_km: "急減速",
+    overspeed_share: "超速比例", highway_share: "高速佔比", city_share: "市區佔比", time_band_code: "時段",
+  }[f] || f;
+}
+</script>
+</body>
+</html>

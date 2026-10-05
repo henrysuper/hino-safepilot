@@ -1,0 +1,28 @@
+{
+  "version": "behavior-goal-v0",
+  "recent_days": 7,
+  "baseline_days": 30,
+  "minimum_trip_count": 2,
+  "minimum_distance_km": 1.0,
+  "minimum_driving_hours": 0.05,
+  "score_weights": {
+    "baseline_excess": 0.40,
+    "absolute_burden": 0.35,
+    "recent_trend": 0.15,
+    "support": 0.10
+  },
+  "metrics": {
+    "decelerate": {"severity": 1.00, "reference_rate": 3.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "accelerate": {"severity": 0.75, "reference_rate": 3.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "speeding": {"severity": 1.00, "reference_rate": 3.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "idle": {"severity": 0.55, "reference_rate": 15.0, "direction": "higher_is_worse", "unit": "idle_pct"},
+    "engine_overloading": {"severity": 0.85, "reference_rate": 1.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "ldws": {"severity": 1.00, "reference_rate": 1.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "pcs": {"severity": 1.00, "reference_rate": 0.5, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "fatigue": {"severity": 1.00, "reference_rate": 0.5, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "distract": {"severity": 0.95, "reference_rate": 1.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "phone": {"severity": 0.95, "reference_rate": 1.0, "direction": "higher_is_worse", "unit": "events_per_100km"},
+    "fuel_efficiency": {"severity": 0.45, "reference_rate": 3.0, "direction": "lower_is_worse", "unit": "km_per_l"}
+  },
+  "disclaimer": "UNRESOLVED: weights and reference rates are prototype configuration values; they are not validated by HINO or accident outcome data."
+}

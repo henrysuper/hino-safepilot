@@ -1,0 +1,146 @@
+{
+  "feature_spec_version": "features-v0-hino-1.0",
+  "dataset_version": "v0_hino",
+  "input_interval": "[t-300s,t)",
+  "label_interval": "(t,t+60s]",
+  "windows_seconds": [30, 60, 120, 300],
+  "engine_windows_seconds": [60, 300],
+  "history_eligibility": {
+    "minimum_coverage_seconds": 240,
+    "minimum_points": 10,
+    "maximum_gap_seconds": 60
+  },
+  "anchor_cadence_seconds": 10,
+  "split_embargo_seconds": 360,
+  "core_label_event_types": {
+    "decelerate": 7,
+    "pcs": 19,
+    "ldws": 20,
+    "fatigue": 12,
+    "distract": 16
+  },
+  "historical_event_types": {
+    "accelerate": 6,
+    "decelerate": 7,
+    "speeding": 8,
+    "engine_overloading": 11,
+    "fatigue": 12,
+    "phone": 14,
+    "distract": 16,
+    "pcs": 19,
+    "ldws": 20
+  },
+  "numeric_families": [
+    {
+      "name": "can_speed",
+      "source": "telemetry.can_speed_kph",
+      "windows": "all",
+      "aggregations": ["mean", "std", "min", "max", "median", "trend_per_second", "range", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "include only values whose Phase 2 quality is valid; null remains null",
+      "model_inclusion": true
+    },
+    {
+      "name": "gps_speed",
+      "source": "telemetry.gps_speed_kph",
+      "windows": "all",
+      "aggregations": ["mean", "std", "min", "max", "valid_count", "out_of_range_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "out-of-range values are excluded from statistics and counted explicitly",
+      "model_inclusion": true
+    },
+    {
+      "name": "engine_rpm",
+      "source": "telemetry.engine_rpm",
+      "windows": "engine",
+      "aggregations": ["mean", "std", "max", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "valid-only; no imputation",
+      "model_inclusion": true
+    },
+    {
+      "name": "engine_load",
+      "source": "telemetry.engine_load_pct",
+      "windows": "engine",
+      "aggregations": ["mean", "std", "max", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "valid-only; no imputation",
+      "model_inclusion": true
+    },
+    {
+      "name": "coolant_temp",
+      "source": "telemetry.engine_coolant_temp_c",
+      "windows": "engine",
+      "aggregations": ["mean", "max", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "valid-only; no imputation",
+      "model_inclusion": true
+    },
+    {
+      "name": "battery_mv",
+      "source": "telemetry.battery_mv",
+      "windows": "engine",
+      "aggregations": ["mean", "min", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "valid-only; no imputation",
+      "model_inclusion": true
+    },
+    {
+      "name": "fuel_level",
+      "source": "telemetry.fuel_level_pct",
+      "windows": "engine",
+      "aggregations": ["mean", "std", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "valid-only; cumulative/final fuel is forbidden",
+      "model_inclusion": true
+    }
+  ],
+  "state_families": [
+    {
+      "name": "can_status",
+      "source": "telemetry.can_status",
+      "windows": "engine",
+      "aggregations": ["normal_fraction", "abnormal_fraction", "valid_count"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "documented codes 0 normal and 9 abnormal; invalid codes excluded",
+      "model_inclusion": true
+    },
+    {
+      "name": "vehicle_status",
+      "source": "telemetry.vehicle_status",
+      "windows": "engine",
+      "aggregations": ["parked_fraction", "driving_fraction", "idling_fraction"],
+      "dtype": "float64",
+      "leakage_status": "past_only",
+      "quality_handling": "documented codes 0/1/2 only; invalid values excluded",
+      "model_inclusion": true
+    }
+  ],
+  "speed_limit_candidates": {
+    "source": "telemetry.gps_speed_limit",
+    "model_inclusion": false,
+    "status": "UNRESOLVED",
+    "reason": "unit and zero semantics are not organizer-confirmed; no speed-to-limit feature is emitted in V0"
+  },
+  "forbidden_feature_sources": [
+    "anchor_or_future_telemetry",
+    "event_end_time",
+    "event_final_duration",
+    "future_event_onset",
+    "final_trip_distance",
+    "final_trip_duration",
+    "final_trip_fuel",
+    "phase_2_5_post_trip_analytics",
+    "raw_or_direct_identity",
+    "coordinates",
+    "timezone_dependent_local_time"
+  ]
+}
