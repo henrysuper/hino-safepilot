@@ -81,3 +81,15 @@ web-build/
 .DS_Store
 Thumbs.db
 .vscode/settings.json
+
+# Fuel console private caches and generated artifacts
+data/osm/
+data/dem/
+models/fuel/
+reports/fuel/
+*ors_cache*.json
+geocode_cache.json
+task_ors_cache.json
+*.env
+build/
+.idea/

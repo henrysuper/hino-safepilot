@@ -1,0 +1,105 @@
+{
+  "version": "fuel-v1.0",
+  "train_months": 8,
+  "validation_months": 1,
+  "segment": {
+    "length_km": 5.0,
+    "candidate_lengths_km": [3.0, 5.0, 10.0],
+    "tail_min_km": 3.0,
+    "min_l_per_100km": 2.0,
+    "max_l_per_100km": 120.0,
+    "exposure_max_gap_seconds": 300,
+    "moving_min_speed_kph": 3.0
+  },
+  "time_bands": [
+    {"name": "am_peak", "start_hour": 7, "end_hour": 9},
+    {"name": "day", "start_hour": 9, "end_hour": 17},
+    {"name": "pm_peak", "start_hour": 17, "end_hour": 19},
+    {"name": "night", "start_hour": 19, "end_hour": 7}
+  ],
+  "osm": {
+    "pbf_path": "data/osm/taiwan-latest.osm.pbf",
+    "index_path": "data/osm/road_index_v2.npz",
+    "densify_spacing_m": 20.0,
+    "max_match_distance_m": 50.0,
+    "class_to_band": {
+      "motorway": "highway",
+      "trunk_fast": "highway",
+      "trunk_other": "normal",
+      "primary_secondary": "normal",
+      "city": "city"
+    }
+  },
+  "dem": {
+    "tif_path": "data/dem/moi_dem20m/不分幅_全台及澎湖DEM/dem_20m.tif",
+    "tfw_path": "data/dem/moi_dem20m/不分幅_全台及澎湖DEM/dem_20m.tfw",
+    "crs": "EPSG:3826",
+    "nodata": -32767
+  },
+  "profile": {
+    "spacing_m": 100.0,
+    "smooth_points": 5
+  },
+  "grid": {
+    "crs": "EPSG:3826",
+    "cell_m": 500.0
+  },
+  "speed_limit_bands": {"city_max": 50.0, "normal_max": 80.0},
+  "maps": {
+    "shrinkage_k": 5.0,
+    "free_flow_quantile": 0.85,
+    "free_flow_min_records": 20,
+    "congestion_clip": [0.05, 1.5]
+  },
+  "driver_types": {
+    "names": ["very_eco", "eco", "normal", "aggressive", "very_aggressive"],
+    "min_trip_km": 10.0,
+    "ratio_cap": 5.0,
+    "min_cell_trips": 20
+  },
+  "drivers": {
+    "per_type": {"300": 20, "500": 10, "700": 10},
+    "new_driver_style_quantiles": [0.15, 0.85, 0.5],
+    "assignment_sigma": 0.15,
+    "other_vehicle_weight": 0.3,
+    "profile_k_trips": 10.0,
+    "profile_k_segments": 20.0,
+    "neighbours": 3,
+    "min_neighbour_trips": 10,
+    "multiplier_clip": [0.2, 5.0],
+    "seed": 20261003
+  },
+  "model": {
+    "device_preference": "cpu",
+    "random_seed": 20261002,
+    "num_boost_round": 3000,
+    "early_stopping_rounds": 150,
+    "candidates": [
+      {"max_depth": 3, "eta": 0.03, "min_child_weight": 5, "subsample": 0.8, "colsample_bytree": 0.8, "reg_lambda": 5.0},
+      {"max_depth": 4, "eta": 0.03, "min_child_weight": 10, "subsample": 0.8, "colsample_bytree": 0.8, "reg_lambda": 5.0},
+      {"max_depth": 6, "eta": 0.03, "min_child_weight": 20, "subsample": 0.8, "colsample_bytree": 0.8, "reg_lambda": 10.0}
+    ],
+    "monotone_increasing": ["idle_min_per_km", "harsh_acc_per_km", "harsh_brake_per_km", "overspeed_share"],
+    "interval_quantiles": [0.1, 0.9],
+    "route_split_folds": 5,
+    "route_split_block_km": 5.0
+  },
+  "score": {"base": 75.0, "scale": 100.0, "min_trip_km": 10.0},
+  "mock": {"label": "此為模擬資料", "fuel_price_twd_per_l": 29.0},
+  "ors": {
+    "base_url": "https://api.openrouteservice.org/v2/directions/driving-hgv/geojson",
+    "max_alternative_km": 100.0,
+    "alternatives": 3,
+    "share_factor": 0.6,
+    "weight_factor": 1.6,
+    "avoid_toll_candidate": false,
+    "timeout_s": 40
+  },
+  "tdx": {
+    "token_url": "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token",
+    "base_url": "https://tdx.transportdata.tw/api/basic",
+    "max_match_distance_m": 40.0,
+    "max_congestion": 1.0,
+    "timeout_s": 60
+  }
+}

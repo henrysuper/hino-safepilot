@@ -1,0 +1,443 @@
+{
+  "title": "HINO 油耗預測與智慧派車",
+  "subtitle": "以車況為主、油耗為輔的派車決策系統",
+  "data_scope": {
+    "vehicles": 20,
+    "test_trips_ge10km": 275,
+    "note": "資料:HINO iTRAQ 行車紀錄;識別單位 enabledCode + journeyCode。"
+  },
+  "model": {
+    "segment_km": 3.0,
+    "familiar_route": {
+      "trip_mape_pct": 11.6,
+      "ranking_accuracy_pct": 88.6,
+      "trips": 275,
+      "grid_coverage": 0.94,
+      "label": "熟悉路線(測試期,車隊跑過的路網)"
+    },
+    "new_route": {
+      "trip_mape_pct": 18.8,
+      "grid_coverage": 0.3,
+      "label": "全新路線(route_split 空間外推)"
+    },
+    "by_vehicle_type_mape_pct": {
+      "300": 9.9,
+      "500": 11.0,
+      "700": 17.6
+    },
+    "feature_importance": [
+      {
+        "feature": "vehicle_type",
+        "shap_pct": 28.9
+      },
+      {
+        "feature": "congestion_index",
+        "shap_pct": 16.0
+      },
+      {
+        "feature": "vehicle_efficiency_offset",
+        "shap_pct": 10.8
+      },
+      {
+        "feature": "avg_slope",
+        "shap_pct": 9.5
+      },
+      {
+        "feature": "idle_min_per_km",
+        "shap_pct": 8.8
+      },
+      {
+        "feature": "elevation_gain_m",
+        "shap_pct": 6.7
+      },
+      {
+        "feature": "segment_km",
+        "shap_pct": 4.3
+      },
+      {
+        "feature": "health_score",
+        "shap_pct": 3.4
+      }
+    ],
+    "provenance": "真實(iTRAQ 遙測 + OSM 道路 + 內政部 DEM 坡度)"
+  },
+  "backtest": {
+    "ors_dispatch_mape_pct": 26.4,
+    "route_matched_mape_pct": 18.0,
+    "note": "真實行程回測:誤差大頭是『ORS 規劃路線 ≠ 實際行駛路線』,非油耗模型本身。",
+    "provenance": "真實(起訖點送 ORS 規劃,與整趟實際油耗比較)"
+  },
+  "score": {
+    "formula": "75.0 + (1 - actual/expected) x 100.0, clipped 0-100; trips >= 10.0 km",
+    "mean_by_type": {
+      "300": 76.6,
+      "500": 77.2,
+      "700": 80.8
+    },
+    "quantiles": {
+      "0.1": 60.9,
+      "0.25": 70.4,
+      "0.5": 79.9,
+      "0.75": 85.3,
+      "0.9": 93.7
+    },
+    "scored_trips": 275,
+    "vehicle_scores": [
+      {
+        "vehicle": "V12",
+        "trips": 19,
+        "km": 1237.0,
+        "score": 87.7,
+        "fuel_ratio": 0.866
+      },
+      {
+        "vehicle": "V01",
+        "trips": 17,
+        "km": 420.5,
+        "score": 87.1,
+        "fuel_ratio": 0.878
+      },
+      {
+        "vehicle": "V06",
+        "trips": 8,
+        "km": 370.0,
+        "score": 81.4,
+        "fuel_ratio": 0.92
+      },
+      {
+        "vehicle": "V11",
+        "trips": 12,
+        "km": 170.6,
+        "score": 80.6,
+        "fuel_ratio": 0.941
+      },
+      {
+        "vehicle": "V02",
+        "trips": 12,
+        "km": 485.0,
+        "score": 80.2,
+        "fuel_ratio": 0.942
+      },
+      {
+        "vehicle": "V17",
+        "trips": 12,
+        "km": 614.0,
+        "score": 80.2,
+        "fuel_ratio": 0.942
+      },
+      {
+        "vehicle": "V20",
+        "trips": 13,
+        "km": 3195.0,
+        "score": 78.5,
+        "fuel_ratio": 0.964
+      },
+      {
+        "vehicle": "V14",
+        "trips": 10,
+        "km": 356.1,
+        "score": 77.3,
+        "fuel_ratio": 0.975
+      },
+      {
+        "vehicle": "V09",
+        "trips": 18,
+        "km": 460.7,
+        "score": 77.1,
+        "fuel_ratio": 0.979
+      },
+      {
+        "vehicle": "V03",
+        "trips": 18,
+        "km": 352.7,
+        "score": 76.6,
+        "fuel_ratio": 0.978
+      },
+      {
+        "vehicle": "V04",
+        "trips": 30,
+        "km": 925.0,
+        "score": 75.3,
+        "fuel_ratio": 0.997
+      },
+      {
+        "vehicle": "V18",
+        "trips": 12,
+        "km": 413.3,
+        "score": 74.7,
+        "fuel_ratio": 1.002
+      },
+      {
+        "vehicle": "V05",
+        "trips": 1,
+        "km": 12.0,
+        "score": 74.4,
+        "fuel_ratio": 1.006
+      },
+      {
+        "vehicle": "V13",
+        "trips": 21,
+        "km": 536.5,
+        "score": 73.5,
+        "fuel_ratio": 1.013
+      },
+      {
+        "vehicle": "V15",
+        "trips": 18,
+        "km": 326.6,
+        "score": 72.4,
+        "fuel_ratio": 1.024
+      },
+      {
+        "vehicle": "V10",
+        "trips": 30,
+        "km": 1156.0,
+        "score": 72.4,
+        "fuel_ratio": 1.03
+      },
+      {
+        "vehicle": "V19",
+        "trips": 13,
+        "km": 2128.0,
+        "score": 71.7,
+        "fuel_ratio": 1.001
+      },
+      {
+        "vehicle": "V08",
+        "trips": 10,
+        "km": 397.3,
+        "score": 71.1,
+        "fuel_ratio": 1.039
+      },
+      {
+        "vehicle": "V16",
+        "trips": 1,
+        "km": 10.4,
+        "score": 54.1,
+        "fuel_ratio": 1.209
+      }
+    ],
+    "provenance": "真實(測試期行程,油耗分數 = 與同車型期望油耗比較)"
+  },
+  "health": {
+    "bands": {
+      "block_below": 74.2,
+      "caution_below": 83.6,
+      "source": "quantile(block=0.1, caution=0.3)"
+    },
+    "counts": {
+      "ok": 14,
+      "caution": 4,
+      "block": 2
+    },
+    "counts_label": {
+      "良好": 14,
+      "注意": 4,
+      "待檢修": 2
+    },
+    "vehicles": [
+      {
+        "health_score": 63.2,
+        "grade": "block",
+        "vehicle": "V08",
+        "grade_label": "待檢修"
+      },
+      {
+        "health_score": 65.6,
+        "grade": "block",
+        "vehicle": "V19",
+        "grade_label": "待檢修"
+      },
+      {
+        "health_score": 75.2,
+        "grade": "caution",
+        "vehicle": "V17",
+        "grade_label": "注意"
+      },
+      {
+        "health_score": 77.9,
+        "grade": "caution",
+        "vehicle": "V18",
+        "grade_label": "注意"
+      },
+      {
+        "health_score": 78.1,
+        "grade": "caution",
+        "vehicle": "V10",
+        "grade_label": "注意"
+      },
+      {
+        "health_score": 78.6,
+        "grade": "caution",
+        "vehicle": "V12",
+        "grade_label": "注意"
+      },
+      {
+        "health_score": 85.7,
+        "grade": "ok",
+        "vehicle": "V09",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 87.3,
+        "grade": "ok",
+        "vehicle": "V20",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 89.9,
+        "grade": "ok",
+        "vehicle": "V14",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 91.0,
+        "grade": "ok",
+        "vehicle": "V01",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 91.7,
+        "grade": "ok",
+        "vehicle": "V13",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 93.3,
+        "grade": "ok",
+        "vehicle": "V05",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 95.7,
+        "grade": "ok",
+        "vehicle": "V16",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 96.6,
+        "grade": "ok",
+        "vehicle": "V03",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 96.9,
+        "grade": "ok",
+        "vehicle": "V06",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 97.4,
+        "grade": "ok",
+        "vehicle": "V15",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 97.8,
+        "grade": "ok",
+        "vehicle": "V02",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 98.0,
+        "grade": "ok",
+        "vehicle": "V04",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 98.6,
+        "grade": "ok",
+        "vehicle": "V11",
+        "grade_label": "良好"
+      },
+      {
+        "health_score": 100.0,
+        "grade": "ok",
+        "vehicle": "V07",
+        "grade_label": "良好"
+      }
+    ],
+    "provenance": "真實(health 由非油耗訊號計算:水溫/DTC/過載/引擎時數/電瓶)"
+  },
+  "dispatch_demo": {
+    "task": "桃園 → 台中(示範)· 135.9 km · HINO 700 系候選車",
+    "distance_km": 135.9,
+    "depart": "2026-10-05T08:00:00+08:00",
+    "rows": [
+      {
+        "vehicle": "V20",
+        "predicted_fuel_L": 34.12,
+        "dispatch_fuel_L": 34.12,
+        "prediction_interval_L": [
+          22.81,
+          61.43
+        ],
+        "predicted_minutes": 162,
+        "health_score": 87.3,
+        "grade": "ok",
+        "grade_label": "良好",
+        "excluded": false
+      },
+      {
+        "vehicle": "V02",
+        "predicted_fuel_L": 34.8,
+        "dispatch_fuel_L": 34.8,
+        "prediction_interval_L": [
+          23.27,
+          62.67
+        ],
+        "predicted_minutes": 162,
+        "health_score": 97.8,
+        "grade": "ok",
+        "grade_label": "良好",
+        "excluded": false
+      },
+      {
+        "vehicle": "V06",
+        "predicted_fuel_L": 35.1,
+        "dispatch_fuel_L": 35.1,
+        "prediction_interval_L": [
+          23.46,
+          63.19
+        ],
+        "predicted_minutes": 162,
+        "health_score": 96.9,
+        "grade": "ok",
+        "grade_label": "良好",
+        "excluded": false
+      },
+      {
+        "vehicle": "V17",
+        "predicted_fuel_L": 36.81,
+        "dispatch_fuel_L": 40.49,
+        "prediction_interval_L": [
+          24.61,
+          66.28
+        ],
+        "predicted_minutes": 162,
+        "health_score": 75.2,
+        "grade": "caution",
+        "grade_label": "注意",
+        "excluded": false
+      },
+      {
+        "vehicle": "V19",
+        "predicted_fuel_L": 51.0,
+        "dispatch_fuel_L": 51.0,
+        "prediction_interval_L": [
+          34.09,
+          91.84
+        ],
+        "predicted_minutes": 162,
+        "health_score": 65.6,
+        "grade": "block",
+        "grade_label": "待檢修",
+        "excluded": true
+      }
+    ],
+    "note": "車況為主、油耗為輔:『待檢修』車長途不派,『注意』車加計車況風險成本後再比油耗。",
+    "provenance": "真實:油耗由 XGBoost 模型預測(ORS 規劃路線、normal 駕駛);健康度由非油耗訊號計算。車輛已去識別化。",
+    "fuel_is_real": true
+  },
+  "mock_notice": "標示為『示意/模擬』的區塊(駕駛名單、車牌、天氣/路況補值、示範油耗)非真實觀測;其餘油耗、里程、行為、車況、坡度均為真實 iTRAQ/OSM/DEM 資料。"
+}

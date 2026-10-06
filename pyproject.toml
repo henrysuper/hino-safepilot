@@ -29,6 +29,13 @@ dev = [
 ai = [
   "google-genai==1.75.0",
 ]
+fuel = [
+  "osmium==4.1.1",
+  "pandas==3.0.6",
+  "pyproj==3.7.2",
+  "requests==2.32.5",
+  "tifffile==2025.10.16",
+]
 
 [project.scripts]
 hino-etl = "hino_safepilot.etl.cli:main"
@@ -38,6 +45,7 @@ hino-dataset = "hino_safepilot.dataset.cli:main"
 hino-train-logistic = "hino_safepilot.modeling.cli:main"
 hino-train-xgboost = "hino_safepilot.modeling.xgboost_cli:main"
 hino-alert-policy = "hino_safepilot.alerting.cli:main"
+hino-fuel = "hino_safepilot.fuel.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
