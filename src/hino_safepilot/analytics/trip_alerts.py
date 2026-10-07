@@ -92,6 +92,27 @@ def review_alerts(
     return reviews
 
 
+def attach_risk_series(reviews, trip_ids, timestamps, probabilities, onsets) -> None:
+    """Add each trip's risk curve (seconds from its first anchor, percent) and core onsets."""
+
+    points: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
+    for trip_id, timestamp, probability in zip(trip_ids, timestamps, probabilities):
+        points[str(trip_id)].append((timestamp, float(probability)))
+    for trip_id, rows in points.items():
+        rows.sort()
+        start, end = rows[0][0], rows[-1][0]
+        review = reviews[trip_id]
+        review["series_start"] = start.isoformat()
+        review["series"] = [
+            [round((time - start).total_seconds()), round(probability * 100)] for time, probability in rows
+        ]
+        review["events"] = [
+            [round((time - start).total_seconds()), name]
+            for time, name in onsets.get(trip_id, [])
+            if start <= time <= end + timedelta(seconds=HORIZON_SECONDS)
+        ]
+
+
 def build_trip_alert_reviews(
     repo_root: Path, *, output_root: Path = Path("data/processed/trip_alerts")
 ) -> dict[str, Any]:
@@ -121,15 +142,15 @@ def build_trip_alert_reviews(
     for split in SPLITS:
         data = load_split(dataset_root, split, features)
         anchors[split] = len(data.y)
-        alerts = replay_revised_policy(
-            data.trip_ids, data.timestamps, bundle.predict_proba(data.X), policy
-        )
+        probabilities = bundle.predict_proba(data.X)
+        alerts = replay_revised_policy(data.trip_ids, data.timestamps, probabilities, policy)
         reviews.update(review_alerts(alerts, onsets, split))
         for trip_id in {str(trip) for trip in data.trip_ids}:
             reviews.setdefault(
                 trip_id,
                 {"split": split, "alerts": [], "alert_count": 0, "event_followed_count": 0},
             )
+        attach_risk_series(reviews, data.trip_ids, data.timestamps, probabilities, onsets)
 
     staging = output.with_name(f".{output.name}.staging-{uuid4().hex}")
     staging.mkdir(parents=True, exist_ok=False)
@@ -160,6 +181,14 @@ def build_trip_alert_reviews(
             "external_api_calls": 0,
             "replay_semantics": "offline replay; drivers did not receive these alerts",
             "train_split_is_in_sample": True,
+            "risk_thresholds": {
+                "elevated": bundle.elevated_threshold,
+                "high": bundle.selected_threshold,
+                "policy_enter": policy.threshold_enter,
+                "policy_reset": policy.threshold_reset,
+                "cooldown_seconds": policy.cooldown_seconds,
+            },
+            "global_top_factors": bundle.top_factors[:5],
             "trip_review_count": count,
             "by_split": by_split,
         }

@@ -85,17 +85,22 @@
 
         <section id="driving-view" class="view" aria-labelledby="driving-title">
           <div class="view-heading">
-            <div><p class="eyebrow">During the trip</p><h2 id="driving-title">未來 60 秒風險契約預覽</h2></div>
+            <div><p class="eyebrow">During the trip</p><h2 id="driving-title">未來 60 秒風險契約預覽</h2><p id="driving-for" class="view-subtitle hidden">—</p></div>
             <span class="contract-chip warning">Offline Experiment</span>
+          </div>
+          <div id="driving-toolbar" class="driver-toolbar hidden">
+            <label for="driving-select">選擇行程</label>
+            <select id="driving-select"></select>
+            <span class="microcopy">只列出有足夠連續資料（過去 5 分鐘）可以做 60 秒預測的行程</span>
           </div>
           <div class="model-disclosure">
             <div><span class="status-dot amber"></span><strong>Model Status: XGBoost Experiment Ready · Not Production</strong></div>
-            <p>Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。</p>
+            <p id="driving-disclosure">Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。</p>
           </div>
           <div class="driving-grid">
             <article class="risk-dial-card">
-              <span class="simulation-badge">Synthetic Demo</span>
-              <div class="risk-dial" id="risk-dial"><div><strong id="risk-score">—</strong><span>模擬機率</span></div></div>
+              <span id="driving-badge" class="simulation-badge">Synthetic Demo</span>
+              <div class="risk-dial" id="risk-dial"><div><strong id="risk-score">—</strong><span id="risk-dial-caption">模擬機率</span></div></div>
               <h3 id="risk-level">—</h3>
               <p id="risk-event">—</p>
             </article>
@@ -118,8 +123,13 @@
               </dl>
             </article>
           </div>
-          <article class="factor-panel"><p class="card-label">模擬 top factors</p><div id="risk-factors" class="factor-list"></div></article>
-          <article class="factor-panel"><p class="card-label">Alert Policy V1 · Synthetic Timeline</p><div id="alert-timeline" class="alert-timeline"></div></article>
+          <article id="risk-chart-panel" class="factor-panel hidden">
+            <p class="card-label">這趟的 60 秒風險變化</p>
+            <div id="risk-chart" class="score-chart risk-chart" role="img" aria-label="這趟每 10 秒的預測風險"></div>
+            <p id="risk-chart-note" class="microcopy">—</p>
+          </article>
+          <article class="factor-panel"><p id="factor-label" class="card-label">模擬 top factors</p><div id="risk-factors" class="factor-list"></div></article>
+          <article class="factor-panel"><p id="timeline-label" class="card-label">Alert Policy V1 · Synthetic Timeline</p><div id="alert-timeline" class="alert-timeline"></div></article>
           <p class="microcopy">Threshold、cooldown、escalation 與 hysteresis 皆為 experimental prototype，尚未經 HINO／domain expert 核准；本頁不執行模型推論。</p>
         </section>
 
@@ -214,25 +224,6 @@
               <ul id="drv-deductions" class="deduction-list"></ul>
             </article>
           </div>
-          <article id="safety-fuel" class="metric-panel safety-fuel hidden">
-            <p class="card-label">安全 × 油耗 · 與油耗主控台的交叉分析</p>
-            <h3 id="sf-headline">—</h3>
-            <p id="sf-body" class="sf-body">—</p>
-            <div class="sf-grid">
-              <div>
-                <table class="history-table sf-table">
-                  <thead><tr><th>安全等級</th><th>趟數</th><th>平均油耗比值</th></tr></thead>
-                  <tbody id="sf-rows"></tbody>
-                </table>
-                <p class="microcopy">油耗比值 = 實際油耗 ÷ 同路線一般駕駛的預期油耗（1.00 = 一般；越低越省）。</p>
-              </div>
-              <div class="sf-driver">
-                <span>這位駕駛（測試期）</span>
-                <strong id="sf-driver">—</strong>
-                <p id="sf-series" class="microcopy">—</p>
-              </div>
-            </div>
-          </article>
           <article class="metric-panel trip-history">
             <p class="card-label">行程紀錄（最新在上，點選可看扣分明細）</p>
             <div class="table-scroll">

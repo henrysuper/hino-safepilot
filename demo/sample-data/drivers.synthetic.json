@@ -1167,5 +1167,33 @@
         "p_value": 0.58
       }
     ]
+  },
+  "model_info": {
+    "model_version": "synthetic-xgboost-preview",
+    "policy_version": "alert-policy-v1.0-experimental",
+    "thresholds": {
+      "elevated": 0.35,
+      "high": 0.5,
+      "policy_enter": 0.5,
+      "policy_reset": 0.4,
+      "cooldown_seconds": 90
+    },
+    "top_factors": [
+      {
+        "label": "距離上次急減速多久",
+        "family": "近期事件紀錄",
+        "importance_pct": 32
+      },
+      {
+        "label": "近 5 分鐘急減速次數",
+        "family": "近期事件紀錄",
+        "importance_pct": 23
+      },
+      {
+        "label": "近 1 分鐘平均車速",
+        "family": "車速變化",
+        "importance_pct": 8
+      }
+    ]
   }
 }

@@ -591,6 +591,67 @@ def safety_fuel_summary(
     }
 
 
+FACTOR_LABELS = {
+    "seconds_since_last_decelerate_onset_300s": "距離上次急減速多久",
+    "decelerate_onset_count_300s": "近 5 分鐘急減速次數",
+    "distract_onset_count_300s": "近 5 分鐘分心次數",
+    "engine_rpm_max_300s": "近 5 分鐘最高轉速",
+    "seconds_since_last_distract_onset_300s": "距離上次分心多久",
+    "gps_speed_mean_60s": "近 1 分鐘平均車速",
+}
+FACTOR_FAMILY_LABELS = {
+    "historical_events": "近期事件紀錄",
+    "engine_vehicle_state": "引擎與車輛狀態",
+    "speed_vehicle_dynamics": "車速變化",
+}
+
+
+def model_info_view(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "model_version": manifest["model_version"],
+        "policy_version": manifest["policy_version"],
+        "thresholds": manifest["risk_thresholds"],
+        "top_factors": [
+            {
+                "label": FACTOR_LABELS.get(factor["feature"], FACTOR_FAMILY_LABELS.get(factor["feature_family"], factor["feature"])),
+                "family": FACTOR_FAMILY_LABELS.get(factor["feature_family"], factor["feature_family"]),
+                "importance_pct": round(float(factor["importance"]) * 100),
+            }
+            for factor in manifest["global_top_factors"][:3]
+        ],
+    }
+
+
+def risk_timeline_view(review: dict | None, trip_start) -> dict[str, Any] | None:
+    """The trip's 60-second risk curve on the trip-minute axis (None when not in the dataset)."""
+
+    if review is None or "series" not in review:
+        return None
+    offset = (datetime.fromisoformat(review["series_start"]) - trip_start).total_seconds()
+    minute = lambda seconds: round((offset + seconds) / 60, 2)
+    points = [[minute(seconds), pct] for seconds, pct in review["series"]]
+    peak = max(points, key=lambda point: point[1])
+    return {
+        "split_label": SPLIT_LABELS.get(review["split"], review["split"]),
+        "points": points,
+        "peak": {"minute": peak[0], "risk_pct": peak[1]},
+        "alerts": [
+            {
+                "minute": round((datetime.fromisoformat(alert["timestamp"]) - trip_start).total_seconds() / 60, 2),
+                "risk_pct": round(alert["probability"] * 100),
+                "escalation": alert["reason"] == "risk_escalation",
+                "event_label": ITEM_LABELS.get(alert["event_name"], alert["event_name"]) if alert["event_name"] else None,
+                "lead_seconds": alert["lead_seconds"],
+            }
+            for alert in review["alerts"]
+        ],
+        "events": [
+            {"minute": minute(seconds), "label": ITEM_LABELS.get(name, name)}
+            for seconds, name in review.get("events", [])
+        ],
+    }
+
+
 def build_driver_views(
     repo_root: Path,
     service: Any,
@@ -674,6 +735,11 @@ def build_driver_views(
             goal_checks={tid: check for checks in checks_by_driver.values() for tid, check in checks.items()},
         )
     }
+    alert_manifest_path = processed / "trip_alerts" / "trip_alert_manifest.json"
+    if alert_manifest_path.is_file():
+        views["drivers"]["model_info"] = model_info_view(
+            json.loads(alert_manifest_path.read_text(encoding="utf-8"))
+        )
     if fuel_summary is not None:
         per_driver = fuel_summary.pop("per_driver")
         views["drivers"]["safety_fuel"] = fuel_summary
@@ -736,6 +802,9 @@ def build_driver_views(
                     "short_trip": (score.distance_km or 0) < SHORT_TRIP_KM,
                     "alert_review": alert_review_view(
                         alert_reviews, score.trip_id, score.trip_start, summary
+                    ),
+                    "risk_timeline": risk_timeline_view(
+                        alert_reviews.get(score.trip_id) if alert_reviews else None, score.trip_start
                     ),
                     "road_context": road_context_view(
                         road_contexts.get(score.trip_id), summary, safety_scorer, road_fleet

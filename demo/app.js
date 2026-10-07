@@ -31,7 +31,7 @@ const params = new URLSearchParams(window.location.search);
 const useLocalData = params.get("source") === "local";
 const syntheticProvider = new StaticJsonProvider();
 const localProvider = new StaticJsonProvider("./local-data", "local");
-const state = { source: "synthetic", index: null, driver: null, reports: new Map() };
+const state = { source: "synthetic", index: null, driver: null, reports: new Map(), drivingSample: null };
 const contractMarkers = {
   synthetic: { prototype_marker: "SYNTHETIC_DEMO", data_classification: "synthetic" },
   local: { prototype_marker: "LOCAL_PRIVATE_DERIVED", data_classification: "private_local" },
@@ -159,6 +159,170 @@ function renderDriving(data) {
     item.append(time, decision);
     timeline.append(item);
   }
+}
+
+function riskLevel(pct, thresholds) {
+  if (pct >= thresholds.high * 100) return "高風險";
+  if (pct >= thresholds.elevated * 100) return "需留意";
+  return "低風險";
+}
+
+// Single series (risk per 10-second anchor) with policy thresholds, alert dots and event marks.
+function renderRiskChart(container, timeline, thresholds) {
+  container.replaceChildren();
+  const width = 640, height = 230, left = 34, right = 12, top = 12, bottom = 28;
+  const points = timeline.points;
+  const maxMinute = Math.max(points[points.length - 1][0], ...timeline.events.map((e) => e.minute), 1);
+  const minMinute = Math.min(points[0][0], 0);
+  const x = (minute) => left + ((minute - minMinute) / (maxMinute - minMinute)) * (width - left - right);
+  const y = (pct) => top + (1 - pct / 100) * (height - top - bottom);
+  const svg = svgElement("svg", { viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" });
+  for (const value of [0, 50, 100]) {
+    const label = svgElement("text", { class: "axis-label", x: left - 6, y: y(value) + 4, "text-anchor": "end" });
+    label.textContent = `${value}%`;
+    svg.append(label);
+  }
+  svg.append(svgElement("line", { class: "threshold", x1: left, x2: width - right, y1: y(thresholds.policy_enter * 100), y2: y(thresholds.policy_enter * 100) }));
+  svg.append(svgElement("line", { class: "threshold reset", x1: left, x2: width - right, y1: y(thresholds.policy_reset * 100), y2: y(thresholds.policy_reset * 100) }));
+  for (const [minute, anchor] of [[minMinute, "start"], [maxMinute, "end"]]) {
+    const label = svgElement("text", { class: "axis-label", x: x(minute), y: height - 8, "text-anchor": anchor });
+    label.textContent = `第 ${Math.round(minute)} 分鐘`;
+    svg.append(label);
+  }
+  svg.append(svgElement("polyline", { class: "risk-line", points: points.map(([m, pct]) => `${x(m)},${y(pct)}`).join(" ") }));
+  for (const event of timeline.events) {
+    const cx = x(event.minute), cy = y(0) - 2;
+    svg.append(svgElement("path", { class: "event-mark", d: `M${cx - 5},${cy} L${cx + 5},${cy} L${cx},${cy - 8} Z` }));
+  }
+  for (const alert of timeline.alerts) {
+    svg.append(svgElement("circle", { class: "alert-dot", cx: x(alert.minute), cy: y(alert.risk_pct), r: 5 }));
+  }
+  const hover = svgElement("line", { class: "hover-line hidden", y1: top, y2: height - bottom });
+  svg.append(hover);
+  const tooltip = document.createElement("div");
+  tooltip.className = "chart-tooltip hidden";
+  svg.addEventListener("mousemove", (event) => {
+    const box = svg.getBoundingClientRect();
+    const minute = minMinute + ((event.clientX - box.left) / box.width * width - left) / (width - left - right) * (maxMinute - minMinute);
+    let nearest = points[0];
+    for (const point of points) if (Math.abs(point[0] - minute) < Math.abs(nearest[0] - minute)) nearest = point;
+    const alert = timeline.alerts.find((a) => Math.abs(a.minute - nearest[0]) < 0.1);
+    hover.setAttribute("x1", x(nearest[0]));
+    hover.setAttribute("x2", x(nearest[0]));
+    hover.classList.remove("hidden");
+    tooltip.textContent = `第 ${nearest[0].toFixed(1)} 分鐘 · 預測風險 ${nearest[1]}%${alert ? " · 系統會提醒" : ""}`;
+    tooltip.style.left = `${(x(nearest[0]) / width) * 100}%`;
+    tooltip.style.top = `${(y(nearest[1]) / height) * 100}%`;
+    tooltip.classList.remove("hidden");
+  });
+  svg.addEventListener("mouseleave", () => { hover.classList.add("hidden"); tooltip.classList.add("hidden"); });
+  const legend = document.createElement("div");
+  legend.className = "chart-legend";
+  legend.innerHTML = '<span><i class="line"></i>預測風險</span><span><i class="dash"></i>提醒門檻 50%（橘線 40% 為解除）</span><span><i class="alert"></i>系統會提醒</span><span><i class="event"></i>實際發生事件</span>';
+  container.append(legend, svg, tooltip);
+}
+
+function renderDrivingTrip(report, info) {
+  const timeline = report.risk_timeline;
+  const thresholds = info.thresholds;
+  setText("driving-title", "這趟的 60 秒風險回放");
+  setText("driving-for", `${state.driver.driver_name} · 第 ${report.ref} 趟 · ${report.date} · ${report.plate ?? "—"}`);
+  setText(
+    "driving-disclosure",
+    `Evaluation Mode: Offline replay。用凍結模型 ${info.model_version} 與提醒規則 ${info.policy_version} 重播這趟行程；資料錄製時還沒有 SafePilot，駕駛當時沒有聽到提醒，未連接即時車輛。資料期間：${timeline.split_label}。`
+  );
+  setText("driving-badge", state.source === "local" ? "Offline Replay" : "Synthetic Demo");
+  const peak = timeline.peak;
+  setText("risk-score", `${peak.risk_pct}%`);
+  setText("risk-dial-caption", "這趟最高風險");
+  setText("risk-level", riskLevel(peak.risk_pct, thresholds));
+  setText("risk-event", `出現在第 ${peak.minute.toFixed(1)} 分鐘`);
+  document.getElementById("risk-dial").style.setProperty("--score", `${(peak.risk_pct / 100) * 360}deg`);
+  setText("risk-horizon", "60 秒");
+  setText("risk-model", info.model_version);
+  setText("risk-label", "Core Any Risk · Label V0");
+  setText("risk-cadence", "每 10 秒預測一次");
+
+  document.getElementById("risk-chart-panel").classList.remove("hidden");
+  renderRiskChart(document.getElementById("risk-chart"), timeline, thresholds);
+  setText(
+    "risk-chart-note",
+    `共 ${timeline.points.length} 個預測點；系統會提醒 ${timeline.alerts.length} 次，這趟發生 ${timeline.events.length} 次核心風險事件（急減速、PCS、車道偏移、疲勞、分心）。`
+  );
+
+  setText("factor-label", "整體模型最重要的因素（關聯，非因果）");
+  const factors = document.getElementById("risk-factors");
+  factors.replaceChildren();
+  for (const factor of info.top_factors) {
+    const item = document.createElement("div");
+    item.className = "factor-item";
+    const title = document.createElement("strong");
+    title.textContent = factor.label;
+    const detail = document.createElement("span");
+    detail.textContent = `${factor.family} · 重要度 ${factor.importance_pct}%`;
+    item.append(title, detail);
+    factors.append(item);
+  }
+
+  setText("timeline-label", `Alert Policy V1 · 這趟的提醒決定（${timeline.alerts.length} 次）`);
+  const list = document.getElementById("alert-timeline");
+  list.replaceChildren();
+  if (!timeline.alerts.length) {
+    const item = document.createElement("div");
+    item.className = "timeline-item silent";
+    const title = document.createElement("strong");
+    title.textContent = `全程最高 ${peak.risk_pct}%`;
+    const detail = document.createElement("span");
+    detail.textContent = `沒有超過 ${Math.round(thresholds.policy_enter * 100)}% 提醒門檻，系統全程不需要出聲`;
+    item.append(title, detail);
+    list.append(item);
+  }
+  for (const alert of timeline.alerts) {
+    const item = document.createElement("div");
+    item.className = "timeline-item speaks";
+    const title = document.createElement("strong");
+    title.textContent = `第 ${alert.minute.toFixed(1)} 分鐘 · ${alert.risk_pct}%`;
+    const detail = document.createElement("span");
+    const decision = alert.escalation ? "風險再升高，升級提醒一次" : "超過門檻，開始一段新風險，播報";
+    detail.textContent = `${decision} · ${alert.event_label ? `${alert.lead_seconds} 秒後發生${alert.event_label}` : "60 秒內沒有發生事件"}`;
+    item.append(title, detail);
+    list.append(item);
+  }
+}
+
+function showDrivingStatic() {
+  document.getElementById("driving-toolbar").classList.add("hidden");
+  document.getElementById("driving-for").classList.add("hidden");
+  document.getElementById("risk-chart-panel").classList.add("hidden");
+  setText("driving-title", "未來 60 秒風險契約預覽");
+  setText("driving-disclosure", "Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。");
+  setText("driving-badge", "Synthetic Demo");
+  setText("risk-dial-caption", "模擬機率");
+  setText("factor-label", "模擬 top factors");
+  setText("timeline-label", "Alert Policy V1 · Synthetic Timeline");
+  if (state.drivingSample) renderDriving(state.drivingSample);
+}
+
+function setupDriving(data) {
+  const info = state.index.model_info;
+  const playable = data.reports.filter((report) => report.risk_timeline);
+  const select = document.getElementById("driving-select");
+  select.replaceChildren();
+  if (!info || !playable.length) {
+    showDrivingStatic();
+    return;
+  }
+  for (const report of [...playable].reverse()) {
+    const option = document.createElement("option");
+    option.value = String(report.ref);
+    option.textContent = `第 ${report.ref} 趟 · ${report.date} · 提醒 ${report.risk_timeline.alerts.length} 次`;
+    select.append(option);
+  }
+  const byRef = new Map(playable.map((report) => [report.ref, report]));
+  select.onchange = () => renderDrivingTrip(byRef.get(Number(select.value)), info);
+  document.getElementById("driving-toolbar").classList.remove("hidden");
+  document.getElementById("driving-for").classList.remove("hidden");
+  renderDrivingTrip(playable[playable.length - 1], info);
 }
 
 function renderSafetyScore(score) {
@@ -449,7 +613,6 @@ function renderDriver(driver) {
   setText("drv-camera", `${driver.camera_blocked_trip_count} 趟`);
 
   renderScoreChart(document.getElementById("drv-chart"), driver.trips.filter((trip) => !trip.short_trip));
-  renderSafetyFuel(state.index.safety_fuel, driver);
   categoryBarRows(
     document.getElementById("drv-categories"),
     Object.entries(driver.category_averages)
@@ -629,60 +792,6 @@ function renderAlertReview(review) {
   );
 }
 
-function renderSafetyFuel(summary, driver) {
-  const card = document.getElementById("safety-fuel");
-  if (!summary) {
-    card.classList.add("hidden");
-    return;
-  }
-  setText(
-    "sf-headline",
-    summary.significant
-      ? "安全分數和油耗有顯著關聯"
-      : "安全和省油是兩個獨立的面向，需要分開管理"
-  );
-  setText(
-    "sf-body",
-    summary.significant
-      ? `在 ${summary.trips} 趟兩邊都有評分的行程中，安全分數與油耗比值的相關係數為 ${summary.rho}（p = ${summary.p_value}）。`
-      : `在 ${summary.trips} 趟兩邊都有評分的行程中，安全分數與油耗比值沒有顯著關聯（相關係數 ${summary.rho}，p = ${summary.p_value}）。開得安全不代表一定省油，反之亦然——所以 SafePilot（安全）與油耗主控台（省油）是互補的兩套回饋，而不是同一件事。`
-  );
-  const rows = document.getElementById("sf-rows");
-  rows.replaceChildren();
-  for (const row of summary.by_grade) {
-    const tr = document.createElement("tr");
-    const grade = document.createElement("td");
-    const badge = document.createElement("span");
-    badge.className = gradeClass(row.grade);
-    badge.textContent = row.grade;
-    grade.append(badge);
-    const trips = document.createElement("td");
-    trips.className = row.trips < 30 ? "num small" : "num";
-    trips.textContent = row.trips < 30 ? `${row.trips}（樣本少）` : row.trips;
-    const ratio = document.createElement("td");
-    ratio.className = "num";
-    ratio.textContent = row.mean_fuel_ratio.toFixed(2);
-    tr.append(grade, trips, ratio);
-    rows.append(tr);
-  }
-  const mine = driver.safety_fuel;
-  setText(
-    "sf-driver",
-    mine ? `${mine.trips} 趟：安全 ${mine.average_score} 分 · 油耗 ${mine.average_fuel_score} 分` : "測試期沒有兩邊都評分的行程"
-  );
-  setText(
-    "sf-series",
-    `依車系分開看：${summary.by_series
-      .map((s) => `${s.series} 系 ${s.rho}（p = ${s.p_value}）`)
-      .join("、")}。${
-      summary.by_series.every((s) => s.rho < 0) && summary.by_series.every((s) => s.p_value >= 0.05)
-        ? "方向都是「越安全越省油」，但都未達統計顯著。"
-        : "（相關係數為負代表越安全越省油；p < 0.05 才算顯著。）"
-    }`
-  );
-  card.classList.remove("hidden");
-}
-
 function rankText(driver) {
   return driver.series_rank
     ? `${driver.primary_type} 系 ${driver.series_ranked_size} 人中第 ${driver.series_rank} 名`
@@ -725,6 +834,7 @@ async function selectDriver(driverId) {
     reportSelect.append(option);
   }
   if (data.reports.length) showReport(data.reports[data.reports.length - 1].ref);
+  setupDriving(data);
 
   renderDriver(entry);
 }
@@ -767,6 +877,7 @@ async function initialize() {
   });
   try {
     const [driving, index] = await Promise.all([loadView("driving", "synthetic"), loadDriverIndex()]);
+    state.drivingSample = driving;
     renderDriving(driving);
     state.index = index;
     document.getElementById("local-banner").classList.toggle("hidden", state.source !== "local");
