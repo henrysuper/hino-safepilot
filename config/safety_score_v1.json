@@ -1,6 +1,6 @@
 {
-  "version": "safety-score-v1.1",
-  "minimum_scored_distance_km": 2.0,
+  "version": "safety-score-v1.2",
+  "minimum_scored_distance_km": 0.5,
   "rate_distance_floor_km": 10.0,
   "reference_score": 70.0,
   "grade_thresholds": {"A": 90, "B": 80, "C": 70, "D": 60},

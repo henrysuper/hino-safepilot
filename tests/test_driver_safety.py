@@ -142,7 +142,7 @@ def test_drivers_view_is_identifier_free_and_limits_details(tmp_path, scorer) ->
         write_fuel_outputs(tmp_path, [(VEHICLE_A, day.replace(hour=0), "D01") for day in days])
     )
     trips = [score(scorer, f"synthetic-{i}", day, decelerate=i) for i, day in enumerate(days)]
-    trips[3] = scorer.score_trip(summary_for(trip_id="synthetic-3", start=days[3], distance_km=1.0)).model_copy(
+    trips[3] = scorer.score_trip(summary_for(trip_id="synthetic-3", start=days[3], distance_km=0.3)).model_copy(
         update={"vehicle_profile_id": vehicle_profile_id(VEHICLE_A)}
     )  # latest trip too short to score
     histories, _ = build_driver_histories(trips, drivers, scoring_version="test")
@@ -252,3 +252,34 @@ def test_safety_fuel_summary_reports_relation_and_skips_small_samples(scorer) ->
     assert summary["per_driver"]["D01"]["trips"] == 5
     assert [row["grade"] for row in summary["by_grade"]] == sorted(row["grade"] for row in summary["by_grade"])
     assert safety_fuel_summary(scores[:10], fuel_rows[:10], {}) is None  # under 20 trips: not reported
+
+
+def test_history_is_distance_weighted_and_short_trips_skip_goals(tmp_path, scorer) -> None:
+    from hino_safepilot.analytics.driver_safety import goal_checks
+    from hino_safepilot.analytics.goals import load_goal_config
+
+    days = [DAY_1 + timedelta(days=offset) for offset in range(3)]
+    drivers = load_virtual_drivers(
+        write_fuel_outputs(tmp_path, [(VEHICLE_A, day.replace(hour=0), "D01") for day in days])
+    )
+    long_rough = score(scorer, "long", days[0], decelerate=30)  # 20 km, low score
+    short_clean = score(scorer, "short", days[1]).model_copy(update={"distance_km": 1.0})
+    trips = [long_rough, short_clean]
+    histories, _ = build_driver_histories(trips, drivers, scoring_version="test")
+    history = next(h for h in histories if h.driver_id == "D01")
+    expected = (long_rough.overall_score * 20 + 100 * 1.0) / 21
+    assert history.average_score == pytest.approx(expected)
+    assert [t.short_trip for t in history.trips] == [False, True]
+
+    root = Path(__file__).resolve().parents[1]
+    summaries = {
+        "a": summary_for(trip_id="a", start=days[0], decelerate=8),
+        "b": summary_for(trip_id="b", start=days[1], decelerate=8),
+        "c": summary_for(trip_id="c", start=days[2], distance_km=1.0, decelerate=0),
+    }
+    scored = [(scorer.score_trip(summaries[k]), "V01") for k in ("a", "b", "c")]
+    checks = goal_checks(
+        scored, summaries, load_goal_config(root / "config" / "behavior_goal_v0.json"),
+        profile_key="driver:D01", rate_floor_km=10.0,
+    )
+    assert "c" not in checks  # the 1 km trip is scored but not used for goal checks

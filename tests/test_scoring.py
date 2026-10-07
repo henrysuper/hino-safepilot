@@ -131,7 +131,7 @@ def test_more_events_never_increase_score(scorer) -> None:
 
 
 def test_short_trip_is_not_scored(scorer) -> None:
-    score = scorer.score_trip(summary_for(distance_km=1.0, decelerate=1))
+    score = scorer.score_trip(summary_for(distance_km=0.3, decelerate=1))
     assert score.score_status == "insufficient_exposure"
     assert score.overall_score is None
     assert score.grade is None
@@ -373,3 +373,17 @@ def test_road_adjustment_only_rescales_the_adjusted_items(scorer) -> None:
     assert smooth(adjusted) > smooth(plain)  # half the braking rate after a 2x road factor
     assert alerts(adjusted) == pytest.approx(alerts(plain))  # DMS items untouched
     assert scorer.score_trip(summary, {}).overall_score == pytest.approx(plain.overall_score)
+
+
+def test_trips_between_half_and_two_km_are_scored(scorer) -> None:
+    score = scorer.score_trip(summary_for(distance_km=1.0, decelerate=1))
+    assert score.score_status == "scored"
+    assert score.overall_score is not None
+
+
+def test_distance_weighted_mean_ignores_missing_and_weights_by_km() -> None:
+    from hino_safepilot.analytics.scoring import distance_weighted_mean
+
+    assert distance_weighted_mean([(100, 1.0), (50, 9.0)]) == pytest.approx(55.0)
+    assert distance_weighted_mean([(100, 1.0), (None, 9.0), (70, 0)]) == pytest.approx(100.0)
+    assert distance_weighted_mean([]) is None

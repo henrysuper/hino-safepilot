@@ -17,6 +17,7 @@ from .models import DailyImprovementGoal, PreDriveBriefing, TripSafetyScore, Tri
 from .pipeline import _safe_resolve, _write_jsonl
 from .scoring import (
     ITEM_LABELS,
+    SHORT_TRIP_KM,
     SafetyScorer,
     build_predrive_briefing,
     load_safety_score_config,
@@ -438,6 +439,7 @@ def local_drivers_view(
                         "top_deduction": trip["top_deduction"],
                         "camera_blocked": trip["dms_reliability"] == "camera_blocked",
                         "goal_status": goal_checks.get(trip["trip_id"], {}).get("status"),
+                        "short_trip": trip.get("short_trip", False),
                         "detail": score_view(scores_by_trip[trip["trip_id"]], definitions)
                         if index in detailed and trip["trip_id"] in scores_by_trip
                         else None,
@@ -731,6 +733,7 @@ def build_driver_views(
                         definitions,
                     ),
                     "goal_check": checks.get(score.trip_id),
+                    "short_trip": (score.distance_km or 0) < SHORT_TRIP_KM,
                     "alert_review": alert_review_view(
                         alert_reviews, score.trip_id, score.trip_start, summary
                     ),

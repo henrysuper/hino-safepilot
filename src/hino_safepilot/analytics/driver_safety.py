@@ -13,14 +13,13 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from statistics import mean
 from typing import Iterable
 
 import pyarrow.parquet as pq
 
 from .engine import vehicle_profile_id
 from .models import DriverSafetyHistory, DriverTripRecord, TripSafetyScore, TripSummary
-from .scoring import ITEM_LABELS
+from .scoring import ITEM_LABELS, SHORT_TRIP_KM, distance_weighted_mean
 
 
 DEFAULT_MOCK_NOTE = (
@@ -96,10 +95,6 @@ def attribute_trips(
     return groups, unassigned
 
 
-def _average(values: list[float]) -> float | None:
-    return mean(values) if values else None
-
-
 def build_driver_history(
     driver: dict,
     trips: list[tuple[TripSafetyScore, str]],
@@ -125,26 +120,32 @@ def build_driver_history(
             if score.top_deductions
             else None,
             dms_reliability=score.dms_reliability,
+            short_trip=score.distance_km is not None and score.distance_km < SHORT_TRIP_KM,
         )
         for score, alias in trips
     ]
 
-    category_values: dict[str, list[float]] = defaultdict(list)
+    category_values: dict[str, list[tuple[float, float | None]]] = defaultdict(list)
     deduction_points: Counter[str] = Counter()
     deduction_trips: Counter[str] = Counter()
     for score in scored:
         for category in score.categories:
             if category.score is not None:
-                category_values[category.label].append(category.score)
+                category_values[category.label].append((category.score, score.distance_km))
         for deduction in score.top_deductions:
             deduction_points[deduction.item] += deduction.points_lost
             deduction_trips[deduction.item] += 1
 
-    # Trip-based windows: the source months are not contiguous, so day windows are often empty.
-    ordered = [score.overall_score for score in scored]
-    recent = ordered[-recent_trips:]
-    previous = ordered[-2 * recent_trips : -recent_trips] if len(ordered) > recent_trips else []
-    recent_average, previous_average = _average(recent), _average(previous)
+    # Trip-based windows over full-length trips (months are not contiguous, so day windows are
+    # often empty); each window is distance-weighted.
+    full = [
+        (score.overall_score, score.distance_km)
+        for score in scored
+        if (score.distance_km or 0) >= SHORT_TRIP_KM
+    ]
+    recent = full[-recent_trips:]
+    previous = full[-2 * recent_trips : -recent_trips] if len(full) > recent_trips else []
+    recent_average, previous_average = distance_weighted_mean(recent), distance_weighted_mean(previous)
     if recent_average is None or previous_average is None:
         trend = "unavailable"
     elif recent_average - previous_average >= TREND_DELTA_POINTS:
@@ -154,9 +155,9 @@ def build_driver_history(
     else:
         trend = "stable"
 
-    monthly: dict[str, list[float]] = defaultdict(list)
+    monthly: dict[str, list[tuple[float, float | None]]] = defaultdict(list)
     for score in scored:
-        monthly[score.trip_start.strftime("%Y-%m")].append(score.overall_score)
+        monthly[score.trip_start.strftime("%Y-%m")].append((score.overall_score, score.distance_km))
 
     return DriverSafetyHistory(
         driver_id=str(driver["driver_id"]),
@@ -166,9 +167,13 @@ def build_driver_history(
         trip_count=len(trips),
         scored_trip_count=len(scored),
         total_distance_km=sum(score.distance_km or 0 for score, _ in trips),
-        average_score=_average([score.overall_score for score in scored]),
+        average_score=distance_weighted_mean((score.overall_score, score.distance_km) for score in scored),
         grade_counts=dict(sorted(Counter(score.grade for score in scored).items())),
-        category_averages={label: mean(values) for label, values in category_values.items()},
+        category_averages={
+            label: value
+            for label, values in category_values.items()
+            if (value := distance_weighted_mean(values)) is not None
+        },
         frequent_deductions=[
             {
                 "item": item,
@@ -184,7 +189,7 @@ def build_driver_history(
         trend=trend,
         camera_blocked_trip_count=sum(score.dms_reliability == "camera_blocked" for score, _ in trips),
         monthly_average_scores=[
-            {"month": month, "average_score": round(mean(values), 1), "trips": len(values)}
+            {"month": month, "average_score": round(distance_weighted_mean(values), 1), "trips": len(values)}
             for month, values in sorted(monthly.items())
         ],
         trips=records,
@@ -260,7 +265,7 @@ def goal_checks(
     profile_key: str,
     rate_floor_km: float,
 ) -> dict[str, dict]:
-    """Per scored trip: the goal shown before it (earlier trips only) and whether it was met.
+    """Per full-length scored trip: the goal shown before it (earlier trips only) and whether it was met.
 
     A higher-is-worse goal is met when the trip is at or below the driver's recent average
     that the goal was based on; a lower-is-worse goal when it is at or above it. ``streak``
@@ -282,6 +287,8 @@ def goal_checks(
         summary = summaries.get(score.trip_id)
         if score.overall_score is None or summary is None:
             continue
+        if (score.distance_km or 0) < SHORT_TRIP_KM:
+            continue  # a sub-2 km trip says little about the goal; it neither counts nor breaks a streak
         baselines = goal_baselines(history, profile_key, score.trip_start, goal_config)
         goal = scorer.daily_goal(
             vehicle_profile_id=profile_key,

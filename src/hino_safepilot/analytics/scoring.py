@@ -10,7 +10,6 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from statistics import mean
 from typing import Any, Iterable
 
 from .models import (
@@ -57,6 +56,17 @@ CATEGORY_TIPS = {
 }
 
 TREND_DELTA_POINTS = 3.0
+# Trips shorter than this are still scored but labelled short; every multi-trip average
+# is weighted by distance, so short trips carry little weight.
+SHORT_TRIP_KM = 2.0
+
+
+def distance_weighted_mean(pairs: Iterable[tuple[float | None, float | None]]) -> float | None:
+    """Mean of values weighted by distance (km); pairs with a missing value or km are skipped."""
+
+    usable = [(value, km) for value, km in pairs if value is not None and km is not None and km > 0]
+    total = sum(km for _, km in usable)
+    return sum(value * km for value, km in usable) / total if total > 0 else None
 
 
 @dataclass(frozen=True)
@@ -255,8 +265,7 @@ class SafetyScorer:
 
 
 def _average(scores: list[TripSafetyScore]) -> float | None:
-    values = [score.overall_score for score in scores if score.overall_score is not None]
-    return mean(values) if values else None
+    return distance_weighted_mean((score.overall_score, score.distance_km) for score in scores)
 
 
 def build_predrive_briefing(
@@ -297,12 +306,16 @@ def build_predrive_briefing(
     else:
         trend = "stable"
 
-    category_values: dict[str, list[float]] = {}
+    category_values: dict[str, list[tuple[float, float | None]]] = {}
     for score in recent_scored:
         for category in score.categories:
             if category.score is not None:
-                category_values.setdefault(category.category, []).append(category.score)
-    category_means = {name: mean(values) for name, values in category_values.items()}
+                category_values.setdefault(category.category, []).append((category.score, score.distance_km))
+    category_means = {
+        name: value
+        for name, values in category_values.items()
+        if (value := distance_weighted_mean(values)) is not None
+    }
     weakest = min(category_means, key=lambda name: (category_means[name], name)) if category_means else None
 
     critical_events = list(config.predrive["critical_reminder_events"])

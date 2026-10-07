@@ -243,6 +243,12 @@ function renderSafetyScore(score) {
 
 function renderPostdrive(data, source) {
   renderSafetyScore(data.safety_score);
+  if (data.short_trip && data.safety_score.status === "scored") {
+    setText(
+      "score-note",
+      `短程（${data.trip_summary.distance_km} km）：分數僅供參考，在平均分數中依公里數加權，權重很低。`
+    );
+  }
   setText(
     "ai-label",
     source === "local" ? `AI 行程摘要 · ${data.generation_mode}` : "AI 行程摘要 · Synthetic"
@@ -434,7 +440,7 @@ function renderDriver(driver) {
       : `路況調整後平均 ${driver.road_adjusted_average} 分（${driver.road_adjusted_trip_count} 趟）`
   );
   setText("drv-average", driver.average_score === null ? null : `${driver.average_score} 分`);
-  setText("drv-recent-label", `最近 ${driver.recent_trips} 趟平均`);
+  setText("drv-recent-label", `最近 ${driver.recent_trips} 趟平均（2 km 以上）`);
   setText("drv-recent", driver.recent_average_score === null ? null : `${driver.recent_average_score} 分`);
   const trend = document.getElementById("drv-trend");
   trend.textContent = driver.trend_label;
@@ -442,7 +448,7 @@ function renderDriver(driver) {
   setText("drv-trips", `${driver.trip_count} 趟（${driver.scored_trip_count} 趟有分數）／${driver.total_distance_km ?? 0} km`);
   setText("drv-camera", `${driver.camera_blocked_trip_count} 趟`);
 
-  renderScoreChart(document.getElementById("drv-chart"), driver.trips);
+  renderScoreChart(document.getElementById("drv-chart"), driver.trips.filter((trip) => !trip.short_trip));
   renderSafetyFuel(state.index.safety_fuel, driver);
   categoryBarRows(
     document.getElementById("drv-categories"),
@@ -472,7 +478,8 @@ function renderDriver(driver) {
     const row = document.createElement("tr");
     const goalMark = { achieved: "✓", missed: "✗" }[trip.goal_status] ?? "—";
     const cells = [
-      trip.ref, trip.date, trip.plate ?? "—", trip.distance_km === null ? "—" : `${trip.distance_km} km`,
+      trip.ref, trip.date, trip.plate ?? "—",
+      trip.distance_km === null ? "—" : `${trip.distance_km} km${trip.short_trip ? " · 短程" : ""}`,
       trip.score ?? "不評分", null, goalMark, trip.top_deduction ?? (trip.camera_blocked ? "鏡頭遮蔽" : "—"),
     ];
     cells.forEach((value, index) => {
@@ -714,7 +721,7 @@ async function selectDriver(driverId) {
     const option = document.createElement("option");
     option.value = String(report.ref);
     const score = report.safety_score.overall_score;
-    option.textContent = `第 ${report.ref} 趟 · ${report.date} · ${score === null ? "不評分" : `${score} 分`}`;
+    option.textContent = `第 ${report.ref} 趟 · ${report.date} · ${score === null ? "不評分" : `${score} 分`}${report.short_trip ? "（短程）" : ""}`;
     reportSelect.append(option);
   }
   if (data.reports.length) showReport(data.reports[data.reports.length - 1].ref);

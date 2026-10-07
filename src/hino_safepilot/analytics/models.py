@@ -236,6 +236,7 @@ class DriverTripRecord(ContractModel):
     grade: Literal["A", "B", "C", "D", "E"] | None = None
     top_deduction: str | None = None
     dms_reliability: Literal["ok", "camera_blocked"] = "ok"
+    short_trip: bool = False
 
 
 class DriverSafetyHistory(ContractModel):
