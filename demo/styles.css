@@ -241,6 +241,10 @@ main { padding: 42px 0 54px; }
 .risk-chart .now-label { fill: var(--red-dark); font-size: 11px; font-weight: 800; }
 .timeline-item.pending { border-left-color: var(--amber); background: #fff8eb; }
 .timeline-item.hit { border-left-color: var(--green); background: #eef7f2; }
+.page-notes { display: grid; gap: 10px; margin-top: 36px; }
+.page-notes .local-banner, .page-notes .mock-note { margin: 0; }
+.model-note { margin: 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: .8rem; line-height: 1.6; }
+.model-note strong { color: var(--ink); }
 .error-panel { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; padding: 18px 22px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); }
 .hidden { display: none !important; }
 footer { display: flex; justify-content: space-between; gap: 20px; padding: 24px 0 35px; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
