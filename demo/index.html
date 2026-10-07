@@ -214,6 +214,25 @@
               <ul id="drv-deductions" class="deduction-list"></ul>
             </article>
           </div>
+          <article id="safety-fuel" class="metric-panel safety-fuel hidden">
+            <p class="card-label">安全 × 油耗 · 與油耗主控台的交叉分析</p>
+            <h3 id="sf-headline">—</h3>
+            <p id="sf-body" class="sf-body">—</p>
+            <div class="sf-grid">
+              <div>
+                <table class="history-table sf-table">
+                  <thead><tr><th>安全等級</th><th>趟數</th><th>平均油耗比值</th></tr></thead>
+                  <tbody id="sf-rows"></tbody>
+                </table>
+                <p class="microcopy">油耗比值 = 實際油耗 ÷ 同路線一般駕駛的預期油耗（1.00 = 一般；越低越省）。</p>
+              </div>
+              <div class="sf-driver">
+                <span>這位駕駛（測試期）</span>
+                <strong id="sf-driver">—</strong>
+                <p id="sf-series" class="microcopy">—</p>
+              </div>
+            </div>
+          </article>
           <article class="metric-panel trip-history">
             <p class="card-label">行程紀錄（最新在上，點選可看扣分明細）</p>
             <div class="table-scroll">

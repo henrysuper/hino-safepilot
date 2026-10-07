@@ -154,6 +154,7 @@ Remove-Item -Recurse -Force data\processed\analytics
 - `osm\road_index_v2.npz` → `data\osm\`
 - `dem\moi_dem20m\不分幅_全台及澎湖DEM\dem_20m.tif` 與 `dem_20m.tfw` → `data\dem\moi_dem20m\不分幅_全台及澎湖DEM\`
 - `processed\fuel\artifacts\` 整個資料夾 → `data\processed\fuel\artifacts\`
+- `processed\fuel\trip_scores_test.parquet` → `data\processed\fuel\`（安全 × 油耗卡片用）
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -e ".[fuel]"

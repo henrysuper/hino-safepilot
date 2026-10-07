@@ -232,3 +232,23 @@ def test_alert_replay_links_next_core_event_within_horizon() -> None:
     assert a["alerts"][0]["event_name"] == "decelerate" and a["alerts"][0]["lead_seconds"] == 26
     assert a["alerts"][1]["event_name"] is None
     assert reviews["trip-b"]["event_followed_count"] == 0 and reviews["trip-b"]["split"] == "test"
+
+
+def test_safety_fuel_summary_reports_relation_and_skips_small_samples(scorer) -> None:
+    from hino_safepilot.analytics.score_pipeline import safety_fuel_summary
+
+    scores, fuel_rows = [], []
+    for i in range(30):
+        trip = score(scorer, f"f-{i}", DAY_1 + timedelta(days=i), decelerate=i % 10)
+        scores.append(trip)
+        fuel_rows.append({
+            "trip_id": trip.trip_id, "scored": True, "vehicle_type": 500.0,
+            "fuel_ratio": 0.8 + (i % 10) * 0.04,  # worse braking -> more fuel
+            "fuel_score": 90 - (i % 10),
+        })
+    summary = safety_fuel_summary(scores, fuel_rows, {"D01": [(s, "V01") for s in scores[:5]]})
+    assert summary["trips"] == 30
+    assert summary["rho"] < -0.9 and summary["significant"] is True
+    assert summary["per_driver"]["D01"]["trips"] == 5
+    assert [row["grade"] for row in summary["by_grade"]] == sorted(row["grade"] for row in summary["by_grade"])
+    assert safety_fuel_summary(scores[:10], fuel_rows[:10], {}) is None  # under 20 trips: not reported

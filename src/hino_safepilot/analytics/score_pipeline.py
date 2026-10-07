@@ -528,6 +528,67 @@ def road_context_view(
     }
 
 
+def safety_fuel_summary(
+    scores: list[TripSafetyScore],
+    fuel_trips: list[dict[str, Any]],
+    groups: dict[str, list[tuple[TripSafetyScore, str]]],
+) -> dict[str, Any] | None:
+    """Fleet-level relation between safety score and the fuel team's road-adjusted fuel ratio.
+
+    ``fuel_ratio`` = actual fuel / fuel expected for a *normal* driver on the same route, so
+    driving style is not removed from it. Reported as found, including a null result.
+    """
+
+    from scipy.stats import spearmanr
+
+    fuel = {
+        str(row["trip_id"]): row
+        for row in fuel_trips
+        if row.get("scored") and row.get("fuel_ratio") is not None
+    }
+    pairs = [
+        (score, fuel[score.trip_id])
+        for score in scores
+        if score.overall_score is not None and score.trip_id in fuel
+    ]
+    if len(pairs) < 20:
+        return None
+    rho, p_value = spearmanr([s.overall_score for s, _ in pairs], [f["fuel_ratio"] for _, f in pairs])
+    by_grade = []
+    for grade in ("A", "B", "C", "D", "E"):
+        subset = [f["fuel_ratio"] for s, f in pairs if s.grade == grade]
+        if subset:
+            by_grade.append(
+                {"grade": grade, "trips": len(subset), "mean_fuel_ratio": round(sum(subset) / len(subset), 3)}
+            )
+    by_series = []
+    for series in sorted({int(f["vehicle_type"]) for _, f in pairs}):
+        subset = [(s.overall_score, f["fuel_ratio"]) for s, f in pairs if int(f["vehicle_type"]) == series]
+        if len(subset) >= 20:
+            r, p = spearmanr([a for a, _ in subset], [b for _, b in subset])
+            by_series.append(
+                {"series": series, "trips": len(subset), "rho": round(float(r), 2), "p_value": round(float(p), 3)}
+            )
+    per_driver = {}
+    for driver_id, trips in groups.items():
+        mine = [(s, fuel[s.trip_id]) for s, _ in trips if s.overall_score is not None and s.trip_id in fuel]
+        if mine:
+            per_driver[driver_id] = {
+                "trips": len(mine),
+                "average_score": round(sum(s.overall_score for s, _ in mine) / len(mine)),
+                "average_fuel_score": round(sum(f["fuel_score"] for _, f in mine) / len(mine)),
+            }
+    return {
+        "trips": len(pairs),
+        "rho": round(float(rho), 2),
+        "p_value": round(float(p_value), 3),
+        "significant": bool(p_value < 0.05),
+        "by_grade": by_grade,
+        "by_series": by_series,
+        "per_driver": per_driver,
+    }
+
+
 def build_driver_views(
     repo_root: Path,
     service: Any,
@@ -595,6 +656,13 @@ def build_driver_views(
         for driver_id, trips in groups.items()
     }
 
+    fuel_path = _safe_resolve(repo, fuel_root) / "trip_scores_test.parquet"
+    if fuel_path.is_file():
+        import pyarrow.parquet as pq
+
+        fuel_summary = safety_fuel_summary(scores, pq.read_table(fuel_path).to_pylist(), groups)
+    else:
+        fuel_summary = None
     views: dict[str, dict[str, Any]] = {
         "drivers": local_drivers_view(
             histories,
@@ -604,6 +672,11 @@ def build_driver_views(
             goal_checks={tid: check for checks in checks_by_driver.values() for tid, check in checks.items()},
         )
     }
+    if fuel_summary is not None:
+        per_driver = fuel_summary.pop("per_driver")
+        views["drivers"]["safety_fuel"] = fuel_summary
+        for entry in views["drivers"]["drivers"]:
+            entry["safety_fuel"] = per_driver.get(entry["driver_id"])
     for history in histories:
         driver_id = history["driver_id"]
         trips = groups.get(driver_id, [])

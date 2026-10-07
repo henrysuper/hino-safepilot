@@ -443,6 +443,7 @@ function renderDriver(driver) {
   setText("drv-camera", `${driver.camera_blocked_trip_count} 趟`);
 
   renderScoreChart(document.getElementById("drv-chart"), driver.trips);
+  renderSafetyFuel(state.index.safety_fuel, driver);
   categoryBarRows(
     document.getElementById("drv-categories"),
     Object.entries(driver.category_averages)
@@ -619,6 +620,60 @@ function renderAlertReview(review) {
     "alert-note",
     `回放：這些資料錄製時還沒有 SafePilot，駕駛當時並沒有聽到提醒。模型 v1_xgboost、提醒規則 Alert Policy V1（實驗性）。資料期間：${review.split_label}。`
   );
+}
+
+function renderSafetyFuel(summary, driver) {
+  const card = document.getElementById("safety-fuel");
+  if (!summary) {
+    card.classList.add("hidden");
+    return;
+  }
+  setText(
+    "sf-headline",
+    summary.significant
+      ? "安全分數和油耗有顯著關聯"
+      : "安全和省油是兩個獨立的面向，需要分開管理"
+  );
+  setText(
+    "sf-body",
+    summary.significant
+      ? `在 ${summary.trips} 趟兩邊都有評分的行程中，安全分數與油耗比值的相關係數為 ${summary.rho}（p = ${summary.p_value}）。`
+      : `在 ${summary.trips} 趟兩邊都有評分的行程中，安全分數與油耗比值沒有顯著關聯（相關係數 ${summary.rho}，p = ${summary.p_value}）。開得安全不代表一定省油，反之亦然——所以 SafePilot（安全）與油耗主控台（省油）是互補的兩套回饋，而不是同一件事。`
+  );
+  const rows = document.getElementById("sf-rows");
+  rows.replaceChildren();
+  for (const row of summary.by_grade) {
+    const tr = document.createElement("tr");
+    const grade = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = gradeClass(row.grade);
+    badge.textContent = row.grade;
+    grade.append(badge);
+    const trips = document.createElement("td");
+    trips.className = row.trips < 30 ? "num small" : "num";
+    trips.textContent = row.trips < 30 ? `${row.trips}（樣本少）` : row.trips;
+    const ratio = document.createElement("td");
+    ratio.className = "num";
+    ratio.textContent = row.mean_fuel_ratio.toFixed(2);
+    tr.append(grade, trips, ratio);
+    rows.append(tr);
+  }
+  const mine = driver.safety_fuel;
+  setText(
+    "sf-driver",
+    mine ? `${mine.trips} 趟：安全 ${mine.average_score} 分 · 油耗 ${mine.average_fuel_score} 分` : "測試期沒有兩邊都評分的行程"
+  );
+  setText(
+    "sf-series",
+    `依車系分開看：${summary.by_series
+      .map((s) => `${s.series} 系 ${s.rho}（p = ${s.p_value}）`)
+      .join("、")}。${
+      summary.by_series.every((s) => s.rho < 0) && summary.by_series.every((s) => s.p_value >= 0.05)
+        ? "方向都是「越安全越省油」，但都未達統計顯著。"
+        : "（相關係數為負代表越安全越省油；p < 0.05 才算顯著。）"
+    }`
+  );
+  card.classList.remove("hidden");
 }
 
 function rankText(driver) {

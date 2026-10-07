@@ -581,7 +581,12 @@
       "series_rank": 3,
       "series_ranked_size": 10,
       "road_adjusted_average": 88,
-      "road_adjusted_trip_count": 12
+      "road_adjusted_trip_count": 12,
+      "safety_fuel": {
+        "trips": 6,
+        "average_score": 88,
+        "average_fuel_score": 79
+      }
     },
     {
       "driver_id": "D02",
@@ -1119,7 +1124,48 @@
       "series_rank": null,
       "series_ranked_size": null,
       "road_adjusted_average": 90,
-      "road_adjusted_trip_count": 8
+      "road_adjusted_trip_count": 8,
+      "safety_fuel": {
+        "trips": 4,
+        "average_score": 90,
+        "average_fuel_score": 74
+      }
     }
-  ]
+  ],
+  "safety_fuel": {
+    "trips": 120,
+    "rho": -0.05,
+    "p_value": 0.58,
+    "significant": false,
+    "by_grade": [
+      {
+        "grade": "A",
+        "trips": 40,
+        "mean_fuel_ratio": 0.97
+      },
+      {
+        "grade": "B",
+        "trips": 45,
+        "mean_fuel_ratio": 0.96
+      },
+      {
+        "grade": "C",
+        "trips": 28,
+        "mean_fuel_ratio": 0.99
+      },
+      {
+        "grade": "D",
+        "trips": 7,
+        "mean_fuel_ratio": 0.95
+      }
+    ],
+    "by_series": [
+      {
+        "series": 500,
+        "trips": 120,
+        "rho": -0.05,
+        "p_value": 0.58
+      }
+    ]
+  }
 }
