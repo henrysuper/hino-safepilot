@@ -165,6 +165,16 @@ Remove-Item -Recurse -Force data\processed\analytics
 
 沒做這步也能跑 Demo，只是行後報告不會出現「路況公平比較」與「60 秒預警回放」。
 
+### 6.1d 後台（油耗派車主控台）的「安全分數」分頁
+
+後台需要油耗組的模型與報告：從雲端 `1006` 複製 `models\fuel\`、`reports\fuel\`，以及 `processed\fuel\` 裡的 `fences_derived.json`、`habitual_routes.json`、`backtest_details.json`、`fence_test.json`。跑完 6.1–6.2 後：
+
+```powershell
+.venv\Scripts\hino-fuel.exe serve --repo-root . --port 8765
+```
+
+打開 http://127.0.0.1:8765 →「安全分數」分頁。
+
 ### 6.2 產生 Demo 資料
 
 ```powershell

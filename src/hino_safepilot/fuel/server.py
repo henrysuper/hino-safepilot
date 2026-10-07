@@ -24,6 +24,9 @@ from .routing import RoutingError, load_env_file
 
 MAX_BODY = 64 * 1024
 WEB_DIR = Path(__file__).resolve().parents[3] / "apps" / "fuel_console"
+# Windows can map .js/.css to text/plain in the registry; browsers then refuse to run app.js.
+for _type, _ext in (("text/javascript", ".js"), ("text/css", ".css"), ("application/json", ".json")):
+    mimetypes.add_type(_type, _ext)
 
 
 def _clean(value):
@@ -349,6 +352,18 @@ class ConsoleState:
         choices = [DriverChoice(d, DriverProfile.from_json(self.drivers[d]), self.drivers[d]["driver_name"]) for d in requested]
         return of_type, choices
 
+    def safety_payload(self) -> dict:
+        """Safety-score fleet overview (SafePilot driver-side outputs)."""
+
+        from hino_safepilot.analytics.console_safety import safety_overview
+
+        return safety_overview(self.paths.repo_root)
+
+    def safety_driver(self, driver_id: str) -> dict:
+        from hino_safepilot.analytics.console_safety import safety_driver
+
+        return safety_driver(self.paths.repo_root, driver_id)
+
     def drivers_payload(self) -> dict:
         return {"drivers": list(self.drivers.values()), "report": self._report("drivers_eval.json")}
 
@@ -430,6 +445,13 @@ def make_handler(state: ConsoleState):
                 "/api/meta": state.meta_payload, "/api/backtest": state.backtest, "/api/scores": state.scores,
                 "/api/fences": state.fences, "/api/fence_test": state.fence_test, "/api/drivers": state.drivers_payload,
             }
+            if url.path == "/api/safety":
+                return self._send(HTTPStatus.OK, state.safety_payload())
+            if url.path == "/api/safety_driver":
+                try:
+                    return self._send(HTTPStatus.OK, state.safety_driver(query.get("id", [""])[0]))
+                except ValueError as error:
+                    return self._send(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             handler = routes.get(url.path)
             if handler is None:
                 return self._static()

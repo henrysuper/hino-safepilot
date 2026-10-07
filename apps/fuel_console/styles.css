@@ -113,10 +113,24 @@ h4 { font-size: .95rem; margin: 10px 0 4px; }
 .rp-actions button { padding: 8px 16px; border-radius: 7px; border: 0; background: var(--accent); color: #fff; cursor: pointer; font: inherit; }
 .rp-actions button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
 
+/* ------------------------------------------------------------------ 安全分數 (SafePilot safety score) */
+.sf-grades { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin: 6px 0 2px; }
+.sf-grades span { display: flex; align-items: center; justify-content: center; color: #fff; font-size: .75rem; font-weight: 700; min-width: 0; }
+.sf-grade-A { background: #2e7d32; } .sf-grade-B { background: #66a36a; } .sf-grade-C { background: #ef6c00; } .sf-grade-D { background: #c75b39; } .sf-grade-E { background: #b3261e; }
+.sf-cols { display: flex; flex-wrap: wrap; gap: 16px; } .sf-cols > div { flex: 1 1 280px; min-width: 0; }
+.sf-chart svg { width: 100%; height: auto; display: block; }
+.sf-chart .grid { stroke: var(--line); stroke-dasharray: 4 4; } .sf-chart .axis { fill: var(--muted); font-size: 11px; }
+.sf-chart .line { fill: none; stroke: var(--accent); stroke-width: 2; } .sf-chart .dot { fill: var(--accent); }
+.sf-cat { display: grid; grid-template-columns: 6em 1fr 3em; align-items: center; gap: 8px; margin: 6px 0; }
+.sf-cat .rp-bar { margin-top: 0; }
+.sf-trip { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.sf-reminders li { margin: 4px 0; } .sf-reminders li.high { color: #b3261e; font-weight: 600; }
+tr.sf-watch td:first-child { border-left: 4px solid #b3261e; }
+
 /* print: show only the report card */
 @media print {
   header, nav, #status, .no-print, #dispatch-form, #smart-form, #map, #smart-map, .legend,
-  #score-summary, #score-table, nav[role="tablist"] { display: none !important; }
+  #score-summary, #score-table, #safety-overview, #safety-filter, #safety-table, nav[role="tablist"] { display: none !important; }
   main { padding: 0; }
   .tab[hidden] { display: none !important; }
   .panel { border: 0; padding: 0; margin: 0; }

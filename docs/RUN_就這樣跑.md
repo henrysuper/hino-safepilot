@@ -84,6 +84,7 @@ GEMINI_API_KEY=...     # 讓推薦理由／報告改用 Gemini 生成
 | 智慧派車 | 單程 A→B 最佳車輛推薦 + 推薦理由 | data、models |
 | 真實行程回測 | 測試期回測結果 | reports |
 | 油耗分數與報告 | 每趟油耗分數 + 行程報告卡 | reports、data |
+| 安全分數 | 車隊安全總覽、需要關注名單、駕駛安全報告與歷史紀錄 | SafePilot 安全分數輸出（見 docs/team_setup_guide.md 第 6 節） |
 | 虛擬駕駛 | 駕駛行為與評估 | reports |
 | 模型驗證 | 模型指標 | reports |
 

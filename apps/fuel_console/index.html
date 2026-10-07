@@ -16,6 +16,7 @@
     <button type="button" role="tab" aria-selected="false" data-tab="smart">智慧派車</button>
     <button type="button" role="tab" aria-selected="false" data-tab="backtest">真實行程回測</button>
     <button type="button" role="tab" aria-selected="false" data-tab="scores">油耗分數與報告</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="safety">安全分數</button>
     <button type="button" role="tab" aria-selected="false" data-tab="drivers">虛擬駕駛</button>
     <button type="button" role="tab" aria-selected="false" data-tab="model">模型驗證</button>
   </nav>
@@ -80,6 +81,14 @@
     <div class="split">
       <div class="panel grow"><div id="score-table"></div></div>
       <div class="panel grow"><h3>行程報告</h3><div id="report"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-safety" class="tab" role="tabpanel" hidden>
+    <div id="safety-overview" class="panel no-print"><p class="hint">載入中…</p></div>
+    <div class="split">
+      <div class="panel grow no-print"><h3>駕駛安全總表</h3><div id="safety-filter"></div><div id="safety-table"></div></div>
+      <div class="panel grow"><div id="safety-report"><p class="hint">點選左側駕駛或關注名單，查看完整安全報告與歷史紀錄。</p></div></div>
     </div>
   </section>
 

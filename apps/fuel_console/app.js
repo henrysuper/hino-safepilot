@@ -820,13 +820,189 @@ function renderModel() {
 }
 
 // ------------------------------------------------------------------ tabs
+// ------------------------------------------------------------------ 安全分數 (SafePilot safety score; simulated drivers)
+const SF_TREND = { improving: "進步", stable: "持平", declining: "退步", unavailable: "資料不足" };
+const SF_GOAL = { achieved: "✓", missed: "✗" };
+const sfScoreClass = (v) => (v == null ? "mid" : v >= 85 ? "good" : v >= 70 ? "mid" : "poor");
+
+async function loadSafety() {
+  if (state.safety) return;
+  status("載入安全分數…");
+  state.safety = await api("/api/safety");
+  const s = state.safety;
+  if (!s.available) {
+    $("safety-overview").innerHTML = `<p class="hint">${esc(s.message)}</p>`;
+    status("");
+    return;
+  }
+  renderSafetyOverview(s);
+  state.safetyFilter = { series: "all", sort: "attention" };
+  renderSafetyFilter();
+  renderSafetyTable();
+  status("點選駕駛查看安全報告。");
+}
+
+function renderSafetyOverview(s) {
+  const f = s.fleet;
+  const totalGraded = Object.values(f.grade_counts).reduce((a, b) => a + b, 0) || 1;
+  const grades = ["A", "B", "C", "D", "E"].filter((g) => f.grade_counts[g]).map((g) => {
+    const share = (f.grade_counts[g] / totalGraded) * 100;
+    return `<span class="sf-grade-${g}" style="width:${share}%" title="${g}：${f.grade_counts[g]} 趟（${num(share, 0)}%）">${share >= 6 ? `${g} ${num(share, 0)}%` : ""}</span>`;
+  }).join("");
+  const r = s.rules;
+  $("safety-overview").innerHTML = `<h2>車隊安全總覽</h2>
+    <div class="note">${esc(s.mock_note)}</div>
+    ${cards([
+      ["車隊平均安全分數（依公里加權）", num(f.average_score, 1)], ["駕駛人數", f.drivers],
+      [`有分數的行程（≥ ${r.short_trip_km} km）`, f.scored_full_trips], ["總里程 km", num(f.total_km, 0)],
+      ["需要關注的駕駛", f.watch_count],
+    ])}
+    <h4>行程等級分布（≥ ${r.short_trip_km} km）</h4><div class="sf-grades" role="img" aria-label="行程等級分布">${grades}</div>
+    <p class="hint">${["A", "B", "C", "D", "E"].filter((g) => f.grade_counts[g]).map((g) => `${g} ${f.grade_counts[g]} 趟`).join("　")}</p>
+    <div class="sf-cols">
+      <div><h4>每月車隊平均</h4><div class="scroll">${table(s.monthly, [
+        { key: "month", label: "月份", cls: "l" }, { key: "trips", label: "行程" },
+        { key: "average_score", label: "平均分數（加權）", fmt: (v) => num(v, 1) },
+      ])}</div><p class="hint">資料月份不連續（主辦方資料只有部分月份）。</p></div>
+      <div><h4>各車系比較</h4>${table(s.series, [
+        { key: "series", label: "車系", cls: "l", fmt: (v) => `${v} 系` }, { key: "drivers", label: "駕駛" },
+        { key: "average_score", label: "平均分數", fmt: (v) => num(v, 1) }, { key: "total_km", label: "里程 km", fmt: (v) => num(v, 0) },
+        { key: "camera_blocked_trips", label: "鏡頭遮蔽趟數" },
+      ])}<p class="hint">不同車系用途與路線不同，請以系內排名比較駕駛。</p></div>
+    </div>
+    <h4>需要關注的駕駛（${s.watch_list.length} 位）</h4>
+    <div id="safety-watch" class="scroll">${table(s.watch_list, [
+      { key: "driver_name", label: "駕駛", cls: "l" }, { key: "series", label: "車系", fmt: (v) => `${v} 系` },
+      { key: "recent_average_score", label: "最近 10 趟", fmt: (v) => num(v, 0) },
+      { key: "attention", label: "原因", cls: "l", fmt: (v) => v.join("；") },
+    ], { onClick: true })}</div>
+    <p class="hint">規則：最近 10 趟比前 10 趟低 ≥ ${r.decline_points} 分、最近 10 趟平均 < ${r.low_recent_score} 分、鏡頭遮蔽 ≥ ${r.camera_blocked_trips} 趟、最近改善目標達成率 ≤ ${r.low_goal_rate_pct}%。名單與分配為模擬資料，僅用於展示流程。</p>`;
+  bindRows($("safety-watch"), s.watch_list, (row) => showSafetyDriver(row.driver_id));
+}
+
+function renderSafetyFilter() {
+  const series = [...new Set(state.safety.drivers.map((d) => d.series))].sort();
+  const f = state.safetyFilter;
+  $("safety-filter").innerHTML = `<div class="series">
+    ${["all", ...series].map((s) => `<button type="button" class="series-btn" data-series="${s}" aria-pressed="${f.series === String(s)}">${s === "all" ? "全部" : `${s} 系`}</button>`).join("")}
+    <label class="hint">排序 <select id="safety-sort">
+      <option value="attention">需要關注優先</option><option value="low">平均分數低→高</option><option value="high">平均分數高→低</option><option value="rank">系內排名</option>
+    </select></label></div>`;
+  $("safety-sort").value = f.sort;
+  $("safety-sort").addEventListener("change", (e) => { f.sort = e.target.value; renderSafetyTable(); });
+  $("safety-filter").querySelectorAll(".series-btn").forEach((b) => b.addEventListener("click", () => {
+    f.series = b.dataset.series; renderSafetyFilter(); renderSafetyTable();
+  }));
+}
+
+function renderSafetyTable() {
+  const f = state.safetyFilter;
+  let rows = state.safety.drivers.filter((d) => f.series === "all" || String(d.series) === f.series);
+  const by = {
+    attention: (a, b) => b.attention.length - a.attention.length || (a.recent_average_score ?? 999) - (b.recent_average_score ?? 999),
+    low: (a, b) => (a.average_score ?? 999) - (b.average_score ?? 999),
+    high: (a, b) => (b.average_score ?? -1) - (a.average_score ?? -1),
+    rank: (a, b) => a.series - b.series || (a.series_rank ?? 999) - (b.series_rank ?? 999),
+  }[f.sort];
+  rows = [...rows].sort(by);
+  const el = $("safety-table");
+  el.innerHTML = `<div class="scroll">${table(rows, [
+    { key: "driver_name", label: "駕駛", cls: "l", html: (d) => `${esc(d.driver_name)}${d.new_driver ? ' <span class="tag llm">新進</span>' : ""}${d.attention.length ? ' <span class="tag warn">關注</span>' : ""}` },
+    { key: "series", label: "車系", fmt: (v) => `${v}` },
+    { key: "series_rank", label: "系內排名", fmt: (v, d) => (v ? `${v}/${d.series_ranked_size}` : "–") },
+    { key: "average_score", label: "平均", fmt: (v) => num(v, 0) },
+    { key: "recent_average_score", label: "最近10趟", fmt: (v) => num(v, 0) },
+    { key: "trend", label: "趨勢", fmt: (v) => SF_TREND[v] || "–" },
+    { key: "goal_rate", label: "目標達成", fmt: (v) => (v == null ? "–" : `${v}%`) },
+    { key: "camera_blocked_trip_count", label: "鏡頭遮蔽" },
+    { key: "scored_trip_count", label: "評分趟數" },
+    { key: "top_deduction", label: "主要扣分", cls: "l" },
+  ], { onClick: true, rowClass: (d) => (d.attention.length ? "sf-watch" : "") })}</div>`;
+  bindRows(el, rows, (row) => showSafetyDriver(row.driver_id));
+}
+
+function sfTrendChart(trips) {
+  const pts = trips.filter((t) => t.score != null && !t.short_trip);
+  if (pts.length < 2) return '<p class="hint">2 km 以上的評分行程不足，無法畫走勢。</p>';
+  const W = 560, H = 180, L = 30, R = 8, T = 8, B = 22;
+  const low = Math.max(0, Math.min(50, Math.floor((Math.min(...pts.map((p) => p.score)) - 5) / 10) * 10));
+  const x = (i) => L + (i / (pts.length - 1)) * (W - L - R);
+  const y = (v) => T + (1 - (v - low) / (100 - low)) * (H - T - B);
+  const grid = [90, 80, 70, 60, 50].filter((v) => v >= low).map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 4}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("");
+  const line = pts.map((p, i) => `${x(i)},${y(p.score)}`).join(" ");
+  const dots = pts.map((p, i) => `<circle class="dot" cx="${x(i)}" cy="${y(p.score)}" r="3"><title>第 ${p.ref} 趟 · ${esc(p.date)} · ${p.score} 分</title></circle>`).join("");
+  return `<div class="sf-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每趟安全分數走勢">${grid}<polyline class="line" points="${line}"/>${dots}
+    <text class="axis" x="${L}" y="${H - 6}">${esc(pts[0].date)}</text><text class="axis" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(pts[pts.length - 1].date)}</text></svg></div>
+    <p class="hint">只畫 2 km 以上的行程；虛線為等級門檻；滑鼠停在點上可看分數。</p>`;
+}
+
+async function showSafetyDriver(driverId) {
+  status("載入駕駛報告…");
+  const d = await api(`/api/safety_driver?id=${encodeURIComponent(driverId)}`);
+  if (!d.available) { $("safety-report").innerHTML = `<p class="hint">${esc(d.message)}</p>`; status(""); return; }
+  const s = d.summary, h = d.history, next = d.next_trip;
+  const reportsByRef = new Map(d.reports.map((r) => [r.ref, r]));
+  const cats = Object.entries(h.category_averages || {}).map(([label, v]) => `<div class="sf-cat"><span>${esc(label)}</span><div class="rp-bar"><div class="rp-bar-fill ${sfScoreClass(v)}" style="width:${v}%"></div></div><b>${num(v, 0)}</b></div>`).join("");
+  const deductions = (h.frequent_deductions || []).map((x) => `<div class="rp-problem"><div class="rp-problem-head">${esc(x.label)}</div><div class="rp-problem-body">出現在 ${x.trips} 趟的主要扣分，共 -${num(x.points_lost, 1)} 分</div></div>`).join("") || '<div class="rp-good"><span class="rp-good-mark">✓</span>目前沒有扣分紀錄</div>';
+  const goal = next && next.message ? `<p><b>${esc(next.display.target_label)}</b>：${esc(next.message.action)}</p>` : '<p class="hint">近期資料不足以選出改善目標。</p>';
+  const reminders = next ? `<ul class="sf-reminders">${next.briefing.reminders.map((r) => `<li class="${r.priority}">${esc(r.message)}</li>`).join("")}</ul>` : "";
+  const trips = [...h.trips].reverse();
+  $("safety-report").innerHTML = `<div class="report-card">
+    <div class="rp-head"><h3>${esc(s.driver_name)} 安全報告 ${s.new_driver ? '<span class="tag llm">新進</span>' : ""}${s.attention.length ? '<span class="tag warn">需要關注</span>' : ""}</h3>
+      <span class="hint">${s.series} 系 · 共 ${s.trip_count} 趟（${s.scored_trip_count} 趟有分數）· ${num(s.total_distance_km, 0)} km · 模擬駕駛名單</span></div>
+    ${s.attention.length ? `<div class="rp-problem"><div class="rp-problem-head">需要關注</div><div class="rp-problem-body">${s.attention.map(esc).join("<br>")}</div></div>` : ""}
+    <div class="rp-score">
+      <div class="rp-gauge"><span class="rp-score-num ${sfScoreClass(s.average_score)}">${num(s.average_score, 0)}</span><span class="rp-score-max">/ 100 平均安全分數（依公里加權）</span>
+        <div class="rp-bar"><div class="rp-bar-fill ${sfScoreClass(s.average_score)}" style="width:${s.average_score || 0}%"></div></div></div>
+      <div class="rp-minis">
+        <div class="rp-mini"><span>最近 10 趟</span><b>${num(s.recent_average_score, 0)}</b></div>
+        <div class="rp-mini"><span>趨勢</span><b>${SF_TREND[s.trend] || "–"}</b></div>
+        <div class="rp-mini"><span>系內排名</span><b>${s.series_rank ? `${s.series_rank}/${s.series_ranked_size}` : "–"}</b></div>
+        <div class="rp-mini"><span>目標達成</span><b>${s.goal_rate == null ? "–" : `${s.goal_rate}%`}</b></div>
+      </div>
+    </div>
+    <p class="hint">路況調整後平均 ${num(s.road_adjusted_average, 0)} 分 · 鏡頭遮蔽 ${s.camera_blocked_trip_count} 趟</p>
+    <h4 class="rp-sec">安全分數走勢</h4>${sfTrendChart(h.trips)}
+    <div class="sf-cols"><div><h4 class="rp-sec">分項平均</h4>${cats}</div><div><h4 class="rp-sec">最常被扣分的項目</h4>${deductions}</div></div>
+    <h4 class="rp-sec">下一趟出發前的改善目標與提醒</h4>${goal}${reminders}
+    <h4 class="rp-sec">行程紀錄（最新在上；最近 15 趟有分數的行程可點開）</h4>
+    <div id="safety-trips" class="scroll">${table(trips, [
+      { key: "ref", label: "第幾趟" }, { key: "date", label: "日期", cls: "l" }, { key: "plate", label: "車牌（模擬）" },
+      { key: "distance_km", label: "km", fmt: (v, t) => (v == null ? "–" : `${num(v, 1)}${t.short_trip ? " 短程" : ""}`) },
+      { key: "score", label: "分數", fmt: (v) => (v == null ? "不評分" : num(v, 0)) }, { key: "grade", label: "等級" },
+      { key: "goal_status", label: "目標", fmt: (v) => SF_GOAL[v] || "–" }, { key: "top_deduction", label: "主要扣分", cls: "l" },
+    ], { onClick: true })}</div>
+    <div id="safety-trip-detail"></div>
+    <div class="rp-actions no-print"><button type="button" id="safety-print">列印這份報告</button></div>
+    <p class="hint">${esc(d.mock_note)}</p></div>`;
+  bindRows($("safety-trips"), trips, (t) => showSafetyTrip(reportsByRef.get(t.ref), t));
+  $("safety-print").addEventListener("click", () => window.print());
+  status("");
+}
+
+function showSafetyTrip(report, trip) {
+  const el = $("safety-trip-detail");
+  if (!report) { el.innerHTML = `<div class="sf-trip hint">第 ${trip.ref} 趟沒有完整報告（只保留最近 15 趟有分數的行程）。</div>`; return; }
+  const sc = report.safety_score;
+  const cats = sc.categories.map((c) => `<div class="sf-cat"><span>${esc(c.label)}</span><div class="rp-bar"><div class="rp-bar-fill ${sfScoreClass(c.score)}" style="width:${c.score || 0}%"></div></div><b>${num(c.score, 0)}</b></div>`).join("");
+  const deds = sc.top_deductions.map((x) => `<li>${esc(x.label)}（${esc(x.category_label)}）${num(x.observed_value, 1)} ${esc(x.unit_label)}：<b>-${num(x.points_lost, 1)} 分</b>${x.definition ? `<br><span class="hint">定義：${esc(x.definition)}</span>` : ""}</li>`).join("") || "<li>沒有明顯扣分</li>";
+  const g = report.goal_check;
+  const goal = g && g.status !== "no_goal" && g.status !== "unavailable"
+    ? `<p>出發前目標「${esc(g.target_label)}」：${g.status === "achieved" ? "✓ 達成" : "✗ 未達成"}（這趟 ${num(g.trip_value, 1)}，目標 ${num(g.goal_value, 1)} ${esc(g.unit_label)}；連續達成 ${g.streak} 趟）</p>` : "";
+  const road = report.road_context ? `<p>路況調整後 ${num(report.road_context.adjusted_score, 0)} 分（市區 ${report.road_context.city_share_pct ?? "–"}%）：${report.road_context.items.map((i) => `${esc(i.label)} ${i.you}/${i.typical} ${esc(i.unit)}`).join("、")}（你/一般）</p>` : "";
+  const risk = report.risk_summary ? `<p>60 秒預測：這趟最高 ${report.risk_summary.peak_risk_pct}%，系統會提醒 ${report.risk_summary.alerts} 次，其中 ${report.risk_summary.alerts_followed_by_event} 次 60 秒內真的發生事件（模擬行駛回放）。</p>` : "";
+  el.innerHTML = `<div class="sf-trip"><h4>第 ${report.ref} 趟 · ${esc(report.date)} · ${esc(report.plate)} · ${num(sc.overall_score, 0)} 分（${esc(sc.grade)}）${report.short_trip ? '<span class="tag">短程</span>' : ""}</h4>
+    ${cats}<ul>${deds}</ul>${goal}${road}${risk}
+    ${sc.dms_reliability === "camera_blocked" ? '<p class="warn-text">車內鏡頭曾被遮蔽，疲勞、手機、分心等偵測可能偏少。</p>' : ""}</div>`;
+}
+
 function switchTab(name, focus = true) {
   document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
   document.querySelectorAll(".tab").forEach((s) => { s.hidden = s.id !== `tab-${name}`; });
   if (name === "dispatch") setTimeout(() => state.map.invalidateSize(), 30);
   if (name === "smart") setTimeout(() => state.smart.map && state.smart.map.invalidateSize(), 30);
   if (focus) {
-    const run = { backtest: loadBacktest, scores: loadScores, drivers: loadDrivers }[name];
+    const run = { backtest: loadBacktest, scores: loadScores, safety: loadSafety, drivers: loadDrivers }[name];
     if (run) run().catch((e) => status(e.message, true));
   }
 }
