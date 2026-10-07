@@ -167,13 +167,26 @@ function riskLevel(pct, thresholds) {
   return "低風險";
 }
 
-// Single series (risk per 10-second anchor) with policy thresholds, alert dots and event marks.
-function renderRiskChart(container, timeline, thresholds) {
+// Simulated drive: the trip advances one prediction point (10 s of trip time) at a time and
+// the page only shows what was known at that moment. Outcomes appear once 60 s have passed.
+const SPEAK_TEXT = {
+  1: "前方注意，請放慢車速",
+  2: "風險持續升高，請立即減速",
+};
+const player = { report: null, info: null, index: 0, timer: null };
+
+function formatClock(minutes) {
+  const total = Math.max(0, Math.round(minutes * 60));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function renderRiskChart(container, timeline, thresholds, nowIndex) {
   container.replaceChildren();
-  const width = 640, height = 230, left = 34, right = 12, top = 12, bottom = 28;
+  const width = 640, height = 230, left = 34, right = 12, top = 14, bottom = 28;
   const points = timeline.points;
-  const maxMinute = Math.max(points[points.length - 1][0], ...timeline.events.map((e) => e.minute), 1);
+  const now = points[nowIndex][0];
   const minMinute = Math.min(points[0][0], 0);
+  const maxMinute = Math.max(points[points.length - 1][0], 1);
   const x = (minute) => left + ((minute - minMinute) / (maxMinute - minMinute)) * (width - left - right);
   const y = (pct) => top + (1 - pct / 100) * (height - top - bottom);
   const svg = svgElement("svg", { viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" });
@@ -186,69 +199,169 @@ function renderRiskChart(container, timeline, thresholds) {
   svg.append(svgElement("line", { class: "threshold reset", x1: left, x2: width - right, y1: y(thresholds.policy_reset * 100), y2: y(thresholds.policy_reset * 100) }));
   for (const [minute, anchor] of [[minMinute, "start"], [maxMinute, "end"]]) {
     const label = svgElement("text", { class: "axis-label", x: x(minute), y: height - 8, "text-anchor": anchor });
-    label.textContent = `第 ${Math.round(minute)} 分鐘`;
+    label.textContent = formatClock(minute);
     svg.append(label);
   }
-  svg.append(svgElement("polyline", { class: "risk-line", points: points.map(([m, pct]) => `${x(m)},${y(pct)}`).join(" ") }));
-  for (const event of timeline.events) {
+  const seen = points.slice(0, nowIndex + 1);
+  svg.append(svgElement("polyline", { class: "risk-line", points: seen.map(([m, pct]) => `${x(m)},${y(pct)}`).join(" ") }));
+  for (const event of timeline.events.filter((e) => e.minute <= now)) {
     const cx = x(event.minute), cy = y(0) - 2;
     svg.append(svgElement("path", { class: "event-mark", d: `M${cx - 5},${cy} L${cx + 5},${cy} L${cx},${cy - 8} Z` }));
   }
-  for (const alert of timeline.alerts) {
+  for (const alert of timeline.alerts.filter((a) => a.minute <= now)) {
     svg.append(svgElement("circle", { class: "alert-dot", cx: x(alert.minute), cy: y(alert.risk_pct), r: 5 }));
   }
-  const hover = svgElement("line", { class: "hover-line hidden", y1: top, y2: height - bottom });
-  svg.append(hover);
+  svg.append(svgElement("line", { class: "now-line", x1: x(now), x2: x(now), y1: top, y2: height - bottom }));
+  const nowLabel = svgElement("text", { class: "now-label", x: x(now) + 4, y: top + 10 });
+  nowLabel.textContent = "現在";
+  svg.append(nowLabel);
   const tooltip = document.createElement("div");
   tooltip.className = "chart-tooltip hidden";
   svg.addEventListener("mousemove", (event) => {
     const box = svg.getBoundingClientRect();
     const minute = minMinute + ((event.clientX - box.left) / box.width * width - left) / (width - left - right) * (maxMinute - minMinute);
-    let nearest = points[0];
-    for (const point of points) if (Math.abs(point[0] - minute) < Math.abs(nearest[0] - minute)) nearest = point;
-    const alert = timeline.alerts.find((a) => Math.abs(a.minute - nearest[0]) < 0.1);
-    hover.setAttribute("x1", x(nearest[0]));
-    hover.setAttribute("x2", x(nearest[0]));
-    hover.classList.remove("hidden");
-    tooltip.textContent = `第 ${nearest[0].toFixed(1)} 分鐘 · 預測風險 ${nearest[1]}%${alert ? " · 系統會提醒" : ""}`;
+    let nearest = seen[0];
+    for (const point of seen) if (Math.abs(point[0] - minute) < Math.abs(nearest[0] - minute)) nearest = point;
+    tooltip.textContent = `${formatClock(nearest[0])} · 預測未來 60 秒風險 ${nearest[1]}%${SPEAK_TEXT[nearest[2]] ? " · 系統播報" : ""}`;
     tooltip.style.left = `${(x(nearest[0]) / width) * 100}%`;
     tooltip.style.top = `${(y(nearest[1]) / height) * 100}%`;
     tooltip.classList.remove("hidden");
   });
-  svg.addEventListener("mouseleave", () => { hover.classList.add("hidden"); tooltip.classList.add("hidden"); });
+  svg.addEventListener("mouseleave", () => tooltip.classList.add("hidden"));
   const legend = document.createElement("div");
   legend.className = "chart-legend";
-  legend.innerHTML = '<span><i class="line"></i>預測風險</span><span><i class="dash"></i>提醒門檻 50%（橘線 40% 為解除）</span><span><i class="alert"></i>系統會提醒</span><span><i class="event"></i>實際發生事件</span>';
+  legend.innerHTML = '<span><i class="line"></i>預測風險</span><span><i class="dash"></i>提醒門檻 50%（橘線 40% 為解除）</span><span><i class="alert"></i>系統播報</span><span><i class="event"></i>已發生的事件</span>';
   container.append(legend, svg, tooltip);
 }
 
-function renderDrivingTrip(report, info) {
+function decisionText(point, thresholds) {
+  const [, pct, code] = point;
+  if (code === 1 || code === 2) return `🔊 播報：「${SPEAK_TEXT[code]}」`;
+  if (code === 3) return "風險仍高：這段已提醒過，不重複播報";
+  if (code === 4) return "風險解除";
+  return pct >= thresholds.elevated * 100 ? `需留意（未達 ${Math.round(thresholds.policy_enter * 100)}% 提醒門檻，不出聲）` : "風險正常，不出聲";
+}
+
+function renderAlertFeed(timeline, now) {
+  const list = document.getElementById("alert-timeline");
+  list.replaceChildren();
+  const fired = timeline.alerts.filter((alert) => alert.minute <= now);
+  const confirmed = fired.filter((a) => a.event_label && a.minute + a.lead_seconds / 60 <= now).length;
+  setText("timeline-label", `到目前為止的提醒：${fired.length} 次，其中 ${confirmed} 次後來真的發生事件`);
+  if (!fired.length) {
+    const item = document.createElement("div");
+    item.className = "timeline-item silent";
+    const title = document.createElement("strong");
+    title.textContent = "還沒有提醒";
+    const detail = document.createElement("span");
+    detail.textContent = "預測風險超過 50% 時，系統才會出聲。";
+    item.append(title, detail);
+    list.append(item);
+    return;
+  }
+  for (const alert of [...fired].reverse()) {
+    const item = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = `${formatClock(alert.minute)} · 預測 ${alert.risk_pct}%${alert.escalation ? " · 升級" : ""}`;
+    const detail = document.createElement("span");
+    const eventAt = alert.event_label ? alert.minute + alert.lead_seconds / 60 : null;
+    if (eventAt !== null && eventAt <= now) {
+      item.className = "timeline-item hit";
+      detail.textContent = `✔ ${alert.lead_seconds} 秒後發生${alert.event_label}，提前預警`;
+    } else if (now - alert.minute < 1) {
+      item.className = "timeline-item pending";
+      detail.textContent = `等待結果…還剩 ${Math.ceil((1 - (now - alert.minute)) * 60)} 秒`;
+    } else {
+      item.className = "timeline-item silent";
+      detail.textContent = "60 秒內沒有發生事件";
+    }
+    item.append(title, detail);
+    list.append(item);
+  }
+}
+
+function renderFrame() {
+  const { report, info, index } = player;
   const timeline = report.risk_timeline;
+  const point = timeline.points[index];
+  const [now, pct, code, speed, decel, distract] = point;
   const thresholds = info.thresholds;
-  setText("driving-title", "這趟的 60 秒風險回放");
+  setText("risk-score", `${pct}%`);
+  setText("risk-dial-caption", "未來 60 秒風險");
+  setText("risk-level", riskLevel(pct, thresholds));
+  setText("risk-event", decisionText(point, thresholds));
+  document.getElementById("risk-dial").style.setProperty("--score", `${(pct / 100) * 360}deg`);
+  const banner = document.getElementById("voice-banner");
+  const lastSpeak = [...timeline.points.slice(0, index + 1)].reverse().find((p) => SPEAK_TEXT[p[2]]);
+  if (lastSpeak && now - lastSpeak[0] < 0.34) {
+    banner.textContent = `🔊 ${SPEAK_TEXT[lastSpeak[2]]}`;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+  setText("in-speed", speed === null || speed === undefined ? "—" : `${speed} km/h`);
+  setText("in-decel", decel === null || decel === undefined ? "—" : `${decel} 次`);
+  setText("in-distract", distract === null || distract === undefined ? "—" : `${distract} 次`);
+  setText("play-clock", `${formatClock(now)} / ${formatClock(timeline.points[timeline.points.length - 1][0])}`);
+  document.getElementById("play-slider").value = String(index);
+  renderRiskChart(document.getElementById("risk-chart"), timeline, thresholds, index);
+  renderAlertFeed(timeline, now);
+}
+
+function speak(code) {
+  if (!document.getElementById("play-voice").checked || !("speechSynthesis" in window) || !SPEAK_TEXT[code]) return;
+  const utterance = new SpeechSynthesisUtterance(SPEAK_TEXT[code]);
+  utterance.lang = "zh-TW";
+  window.speechSynthesis.speak(utterance);
+}
+
+function stopPlayer() {
+  if (player.timer) clearInterval(player.timer);
+  player.timer = null;
+  document.getElementById("play-btn").textContent = "▶ 播放";
+}
+
+function startPlayer() {
+  const points = player.report.risk_timeline.points;
+  if (player.index >= points.length - 1) player.index = 0;
+  const speed = Number(document.getElementById("play-speed").value);
+  document.getElementById("play-btn").textContent = "⏸ 暫停";
+  player.timer = setInterval(() => {
+    if (player.index >= points.length - 1) {
+      stopPlayer();
+      return;
+    }
+    player.index += 1;
+    speak(points[player.index][2]);
+    renderFrame();
+  }, 10000 / speed);
+}
+
+function loadPlayerTrip(report, info) {
+  stopPlayer();
+  player.report = report;
+  player.info = info;
+  player.index = 0;
+  document.getElementById("play-btn").textContent = "▶ 開始模擬行駛";
+  const slider = document.getElementById("play-slider");
+  slider.max = String(report.risk_timeline.points.length - 1);
   setText("driving-for", `${state.driver.driver_name} · 第 ${report.ref} 趟 · ${report.date} · ${report.plate ?? "—"}`);
+  renderFrame();
+}
+
+function renderDrivingTrip(report, info) {
+  setText("driving-title", "未來 60 秒風險預測");
   setText(
     "driving-disclosure",
-    `Evaluation Mode: Offline replay。用凍結模型 ${info.model_version} 與提醒規則 ${info.policy_version} 重播這趟行程；資料錄製時還沒有 SafePilot，駕駛當時沒有聽到提醒，未連接即時車輛。資料期間：${timeline.split_label}。`
+    `Evaluation Mode: Offline · 模擬行駛：用這趟的歷史資料逐點重現，模型每次只看得到「現在」以前 5 分鐘的資料，預測未來 60 秒；結果要等 60 秒後才揭曉。資料錄製時還沒有 SafePilot，未連接即時車輛。模型 ${info.model_version}、提醒規則 ${info.policy_version}。資料期間：${report.risk_timeline.split_label}。`
   );
-  setText("driving-badge", state.source === "local" ? "Offline Replay" : "Synthetic Demo");
-  const peak = timeline.peak;
-  setText("risk-score", `${peak.risk_pct}%`);
-  setText("risk-dial-caption", "這趟最高風險");
-  setText("risk-level", riskLevel(peak.risk_pct, thresholds));
-  setText("risk-event", `出現在第 ${peak.minute.toFixed(1)} 分鐘`);
-  document.getElementById("risk-dial").style.setProperty("--score", `${(peak.risk_pct / 100) * 360}deg`);
+  setText("driving-badge", state.source === "local" ? "模擬行駛" : "Synthetic Demo");
   setText("risk-horizon", "60 秒");
   setText("risk-model", info.model_version);
   setText("risk-label", "Core Any Risk · Label V0");
   setText("risk-cadence", "每 10 秒預測一次");
-
-  document.getElementById("risk-chart-panel").classList.remove("hidden");
-  renderRiskChart(document.getElementById("risk-chart"), timeline, thresholds);
-  setText(
-    "risk-chart-note",
-    `共 ${timeline.points.length} 個預測點；系統會提醒 ${timeline.alerts.length} 次，這趟發生 ${timeline.events.length} 次核心風險事件（急減速、PCS、車道偏移、疲勞、分心）。`
-  );
+  for (const id of ["risk-chart-panel", "model-inputs", "player"]) document.getElementById(id).classList.remove("hidden");
+  setText("risk-chart-note", "紅點是系統播報的時間點；橘色三角形是已經發生的核心風險事件（急減速、PCS、車道偏移、疲勞、分心）。未來的部分不會先顯示。模型需要先累積 5 分鐘的資料，所以第一個預測不在 00:00。");
 
   setText("factor-label", "整體模型最重要的因素（關聯，非因果）");
   const factors = document.getElementById("risk-factors");
@@ -263,34 +376,12 @@ function renderDrivingTrip(report, info) {
     item.append(title, detail);
     factors.append(item);
   }
-
-  setText("timeline-label", `Alert Policy V1 · 這趟的提醒決定（${timeline.alerts.length} 次）`);
-  const list = document.getElementById("alert-timeline");
-  list.replaceChildren();
-  if (!timeline.alerts.length) {
-    const item = document.createElement("div");
-    item.className = "timeline-item silent";
-    const title = document.createElement("strong");
-    title.textContent = `全程最高 ${peak.risk_pct}%`;
-    const detail = document.createElement("span");
-    detail.textContent = `沒有超過 ${Math.round(thresholds.policy_enter * 100)}% 提醒門檻，系統全程不需要出聲`;
-    item.append(title, detail);
-    list.append(item);
-  }
-  for (const alert of timeline.alerts) {
-    const item = document.createElement("div");
-    item.className = "timeline-item speaks";
-    const title = document.createElement("strong");
-    title.textContent = `第 ${alert.minute.toFixed(1)} 分鐘 · ${alert.risk_pct}%`;
-    const detail = document.createElement("span");
-    const decision = alert.escalation ? "風險再升高，升級提醒一次" : "超過門檻，開始一段新風險，播報";
-    detail.textContent = `${decision} · ${alert.event_label ? `${alert.lead_seconds} 秒後發生${alert.event_label}` : "60 秒內沒有發生事件"}`;
-    item.append(title, detail);
-    list.append(item);
-  }
+  loadPlayerTrip(report, info);
 }
 
 function showDrivingStatic() {
+  stopPlayer();
+  for (const id of ["player", "model-inputs", "voice-banner"]) document.getElementById(id).classList.add("hidden");
   document.getElementById("driving-toolbar").classList.add("hidden");
   document.getElementById("driving-for").classList.add("hidden");
   document.getElementById("risk-chart-panel").classList.add("hidden");
@@ -315,14 +406,17 @@ function setupDriving(data) {
   for (const report of [...playable].reverse()) {
     const option = document.createElement("option");
     option.value = String(report.ref);
-    option.textContent = `第 ${report.ref} 趟 · ${report.date} · 提醒 ${report.risk_timeline.alerts.length} 次`;
+    option.textContent = `第 ${report.ref} 趟 · ${report.date} · ${report.risk_timeline.points.length} 個預測點`;
     select.append(option);
   }
   const byRef = new Map(playable.map((report) => [report.ref, report]));
   select.onchange = () => renderDrivingTrip(byRef.get(Number(select.value)), info);
   document.getElementById("driving-toolbar").classList.remove("hidden");
   document.getElementById("driving-for").classList.remove("hidden");
-  renderDrivingTrip(playable[playable.length - 1], info);
+  // Start on the latest trip where the system would speak at least once, so the demo shows an alert.
+  const featured = [...playable].reverse().find((report) => report.risk_timeline.alerts.length) ?? playable[playable.length - 1];
+  select.value = String(featured.ref);
+  renderDrivingTrip(featured, info);
 }
 
 function renderSafetyScore(score) {
@@ -893,6 +987,15 @@ async function initialize() {
       select.append(option);
     }
     select.addEventListener("change", () => selectDriver(select.value).catch(handleLoadError));
+    document.getElementById("play-btn").addEventListener("click", () => (player.timer ? stopPlayer() : startPlayer()));
+    document.getElementById("play-speed").addEventListener("change", () => {
+      if (player.timer) { stopPlayer(); startPlayer(); }
+    });
+    document.getElementById("play-slider").addEventListener("input", (event) => {
+      stopPlayer();
+      player.index = Number(event.target.value);
+      renderFrame();
+    });
     document.getElementById("report-select").addEventListener("change", (event) => {
       showReport(Number(event.target.value));
     });

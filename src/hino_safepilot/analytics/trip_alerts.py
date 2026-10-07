@@ -20,7 +20,8 @@ from uuid import uuid4
 import joblib
 import pyarrow.dataset as ds
 
-from hino_safepilot.alerting.contracts import AlertPolicyConfig
+from hino_safepilot.alerting.contracts import AlertPolicyConfig, AlertReason, AlertState
+from hino_safepilot.alerting.engine import AlertPolicyEngine
 from hino_safepilot.alerting.evaluation import replay_revised_policy
 from hino_safepilot.modeling.training import load_split
 
@@ -31,6 +32,11 @@ SPLITS = ("train", "validation", "test")
 # Event families behind the Label V0 target `label_any_core_risk_60s`.
 CORE_RISK_EVENTS = ("decelerate", "pcs", "ldws", "fatigue", "distract")
 HORIZON_SECONDS = 60.0
+# What the player shows as "the model saw (past window)" at each prediction point.
+PLAYER_INPUTS = ("can_speed_mean_60s", "decelerate_onset_count_300s", "distract_onset_count_300s")
+# Policy decision per prediction point: 0 normal, 1 speak (new episode), 2 speak (escalation),
+# 3 active episode without speaking, 4 episode reset.
+DECISION_CODES = {"normal": 0, "speak_new": 1, "speak_escalation": 2, "active": 3, "reset": 4}
 
 
 def _core_onsets(interim_root: Path) -> dict[str, list[tuple[datetime, str]]]:
@@ -92,19 +98,44 @@ def review_alerts(
     return reviews
 
 
-def attach_risk_series(reviews, trip_ids, timestamps, probabilities, onsets) -> None:
-    """Add each trip's risk curve (seconds from its first anchor, percent) and core onsets."""
+def _decision_code(decision) -> int:
+    if decision.should_speak:
+        return DECISION_CODES[
+            "speak_escalation" if decision.reason is AlertReason.RISK_ESCALATION else "speak_new"
+        ]
+    if decision.reason is AlertReason.HYSTERESIS_RESET:
+        return DECISION_CODES["reset"]
+    return DECISION_CODES["active" if decision.state_after is AlertState.ACTIVE else "normal"]
 
-    points: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
-    for trip_id, timestamp, probability in zip(trip_ids, timestamps, probabilities):
-        points[str(trip_id)].append((timestamp, float(probability)))
+
+def _whole(value: float) -> int | None:
+    return None if value != value else round(float(value))  # NaN -> None
+
+
+def attach_risk_series(reviews, trip_ids, timestamps, probabilities, onsets, inputs, policy) -> None:
+    """Add each trip's prediction series and core onsets.
+
+    Each point: [seconds from the first anchor, risk %, policy decision code, then the
+    PLAYER_INPUTS values the model saw]. Decisions come from replaying the same frozen policy.
+    """
+
+    points: dict[str, list[tuple]] = defaultdict(list)
+    for index, (trip_id, timestamp, probability) in enumerate(zip(trip_ids, timestamps, probabilities)):
+        points[str(trip_id)].append((timestamp, float(probability), index))
     for trip_id, rows in points.items():
         rows.sort()
         start, end = rows[0][0], rows[-1][0]
+        engine = AlertPolicyEngine(policy)
         review = reviews[trip_id]
         review["series_start"] = start.isoformat()
         review["series"] = [
-            [round((time - start).total_seconds()), round(probability * 100)] for time, probability in rows
+            [
+                round((time - start).total_seconds()),
+                round(probability * 100),
+                _decision_code(engine.decide(trip_id, time, probability)),
+                *(_whole(inputs[index, column]) for column in range(inputs.shape[1])),
+            ]
+            for time, probability, index in rows
         ]
         review["events"] = [
             [round((time - start).total_seconds()), name]
@@ -150,7 +181,10 @@ def build_trip_alert_reviews(
                 trip_id,
                 {"split": split, "alerts": [], "alert_count": 0, "event_followed_count": 0},
             )
-        attach_risk_series(reviews, data.trip_ids, data.timestamps, probabilities, onsets)
+        columns = [data.feature_names.index(name) for name in PLAYER_INPUTS]
+        attach_risk_series(
+            reviews, data.trip_ids, data.timestamps, probabilities, onsets, data.X[:, columns], policy
+        )
 
     staging = output.with_name(f".{output.name}.staging-{uuid4().hex}")
     staging.mkdir(parents=True, exist_ok=False)
@@ -189,6 +223,8 @@ def build_trip_alert_reviews(
                 "cooldown_seconds": policy.cooldown_seconds,
             },
             "global_top_factors": bundle.top_factors[:5],
+            "series_fields": ["seconds", "risk_pct", "decision", *PLAYER_INPUTS],
+            "decision_codes": DECISION_CODES,
             "trip_review_count": count,
             "by_split": by_split,
         }

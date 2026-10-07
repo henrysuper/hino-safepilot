@@ -93,6 +93,14 @@
             <select id="driving-select"></select>
             <span class="microcopy">只列出有足夠連續資料（過去 5 分鐘）可以做 60 秒預測的行程</span>
           </div>
+          <div id="player" class="player hidden">
+            <button id="play-btn" type="button" class="play-btn" aria-label="播放">▶ 開始模擬行駛</button>
+            <label for="play-speed" class="microcopy">速度</label>
+            <select id="play-speed"><option value="10">10 倍</option><option value="30" selected>30 倍</option><option value="60">60 倍</option></select>
+            <input id="play-slider" type="range" min="0" max="0" value="0" aria-label="行程時間" />
+            <span id="play-clock" class="play-clock">—</span>
+            <label class="voice-toggle"><input id="play-voice" type="checkbox" /> 語音提醒</label>
+          </div>
           <div class="model-disclosure">
             <div><span class="status-dot amber"></span><strong>Model Status: XGBoost Experiment Ready · Not Production</strong></div>
             <p id="driving-disclosure">Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。</p>
@@ -103,6 +111,7 @@
               <div class="risk-dial" id="risk-dial"><div><strong id="risk-score">—</strong><span id="risk-dial-caption">模擬機率</span></div></div>
               <h3 id="risk-level">—</h3>
               <p id="risk-event">—</p>
+              <p id="voice-banner" class="voice-banner hidden">—</p>
             </article>
             <article class="metric-panel">
               <p class="card-label">Prediction Contract Preview</p>
@@ -123,8 +132,16 @@
               </dl>
             </article>
           </div>
+          <article id="model-inputs" class="factor-panel hidden">
+            <p class="card-label">模型現在看到的資料（只有「現在」以前）</p>
+            <div class="factor-list">
+              <div class="factor-item"><strong id="in-speed">—</strong><span>近 1 分鐘平均車速</span></div>
+              <div class="factor-item"><strong id="in-decel">—</strong><span>近 5 分鐘急減速次數</span></div>
+              <div class="factor-item"><strong id="in-distract">—</strong><span>近 5 分鐘分心次數</span></div>
+            </div>
+          </article>
           <article id="risk-chart-panel" class="factor-panel hidden">
-            <p class="card-label">這趟的 60 秒風險變化</p>
+            <p class="card-label">每 10 秒一次的 60 秒風險預測（只畫到現在）</p>
             <div id="risk-chart" class="score-chart risk-chart" role="img" aria-label="這趟每 10 秒的預測風險"></div>
             <p id="risk-chart-note" class="microcopy">—</p>
           </article>

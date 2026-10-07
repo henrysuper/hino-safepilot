@@ -629,7 +629,8 @@ def risk_timeline_view(review: dict | None, trip_start) -> dict[str, Any] | None
         return None
     offset = (datetime.fromisoformat(review["series_start"]) - trip_start).total_seconds()
     minute = lambda seconds: round((offset + seconds) / 60, 2)
-    points = [[minute(seconds), pct] for seconds, pct in review["series"]]
+    # [trip minute, risk %, policy decision code, speed km/h, decelerations in 5 min, distractions in 5 min]
+    points = [[minute(seconds), pct, *rest] for seconds, pct, *rest in review["series"]]
     peak = max(points, key=lambda point: point[1])
     return {
         "split_label": SPLIT_LABELS.get(review["split"], review["split"]),

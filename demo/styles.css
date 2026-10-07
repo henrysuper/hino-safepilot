@@ -230,6 +230,17 @@ main { padding: 42px 0 54px; }
 .chart-legend i.alert { background: var(--red); }
 .chart-legend i.event { background: var(--amber); border-radius: 2px; }
 .chart-legend i.dash { width: 16px; height: 0; border-top: 2px dashed var(--red); border-radius: 0; vertical-align: 3px; }
+.player { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.play-btn { padding: 10px 18px; border: 0; border-radius: 12px; background: var(--charcoal); color: white; font-weight: 850; cursor: pointer; }
+.player select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: white; font: inherit; }
+#play-slider { flex: 1 1 220px; accent-color: var(--red); }
+.play-clock { min-width: 9em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.voice-toggle { color: var(--muted); font-size: .85rem; }
+.risk-dial-card > p.voice-banner, .voice-banner { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--red); color: white; font-weight: 850; }
+.risk-chart .now-line { stroke: var(--red-dark); stroke-width: 1.5; }
+.risk-chart .now-label { fill: var(--red-dark); font-size: 11px; font-weight: 800; }
+.timeline-item.pending { border-left-color: var(--amber); background: #fff8eb; }
+.timeline-item.hit { border-left-color: var(--green); background: #eef7f2; }
 .error-panel { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; padding: 18px 22px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); }
 .hidden { display: none !important; }
 footer { display: flex; justify-content: space-between; gap: 20px; padding: 24px 0 35px; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
