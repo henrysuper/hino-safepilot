@@ -26,10 +26,12 @@ class StaticJsonProvider extends DataProvider {
 
 // ?source=local reads private views exported by `hino-analytics export-demo`, served
 // only by scripts/serve_demo.py. The driving view always stays synthetic.
-const useLocalData = new URLSearchParams(window.location.search).get("source") === "local";
+// One simulated driver is selected at a time; pre-drive, post-drive and history all follow it.
+const params = new URLSearchParams(window.location.search);
+const useLocalData = params.get("source") === "local";
 const syntheticProvider = new StaticJsonProvider();
 const localProvider = new StaticJsonProvider("./local-data", "local");
-const localViews = new Set(["predrive", "postdrive"]);
+const state = { source: "synthetic", index: null, driver: null, reports: new Map() };
 const contractMarkers = {
   synthetic: { prototype_marker: "SYNTHETIC_DEMO", data_classification: "synthetic" },
   local: { prototype_marker: "LOCAL_PRIVATE_DERIVED", data_classification: "private_local" },
@@ -38,10 +40,14 @@ const requiredFields = {
   predrive: ["prototype_marker", "daily_improvement_goal", "message", "briefing"],
   driving: ["prototype_marker", "model_status", "prediction_contract"],
   postdrive: ["prototype_marker", "trip_summary", "ai_report", "safety_score"],
+  drivers: ["prototype_marker", "mock_note", "drivers"],
+  driver: ["prototype_marker", "predrive", "reports"],
 };
 
-function sourceFor(viewName) {
-  return useLocalData && localViews.has(viewName) ? "local" : "synthetic";
+async function loadView(name, source) {
+  const data = await (source === "local" ? localProvider : syntheticProvider).load(name);
+  assertContract(name.startsWith("driver-") ? "driver" : name, data, source);
+  return data;
 }
 
 function assertContract(viewName, data, source) {
@@ -286,6 +292,398 @@ function renderPostdrive(data, source) {
   );
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svgElement(name, attributes) {
+  const element = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+  return element;
+}
+
+function categoryBarRows(container, rows) {
+  container.replaceChildren();
+  for (const [label, score] of rows) {
+    const row = document.createElement("div");
+    row.className = "category-bar";
+    const name = document.createElement("span");
+    name.textContent = label;
+    const track = document.createElement("div");
+    track.className = "bar-track";
+    const fill = document.createElement("i");
+    fill.className = scoreTone(score);
+    fill.style.width = `${score ?? 0}%`;
+    track.append(fill);
+    const value = document.createElement("strong");
+    value.textContent = score ?? "—";
+    row.append(name, track, value);
+    container.append(row);
+  }
+}
+
+// Single-series line: score per scored trip in time order, grade thresholds as reference lines.
+function renderScoreChart(container, trips) {
+  container.replaceChildren();
+  const points = trips.filter((trip) => trip.score !== null && trip.score !== undefined);
+  if (points.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "chart-empty";
+    empty.textContent = "尚無可評分的行程。";
+    container.append(empty);
+    return;
+  }
+  const width = 560, height = 220, left = 34, right = 12, top = 12, bottom = 26;
+  const lowest = Math.min(...points.map((trip) => trip.score));
+  const floor = Math.max(0, Math.min(50, Math.floor((lowest - 5) / 10) * 10));
+  const x = (i) => left + (points.length === 1 ? (width - left - right) / 2 : (i / (points.length - 1)) * (width - left - right));
+  const y = (score) => top + (1 - (score - floor) / (100 - floor)) * (height - top - bottom);
+  const svg = svgElement("svg", { viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" });
+  for (const threshold of [100, 90, 80, 70, 60, 50].filter((value) => value >= floor)) {
+    svg.append(svgElement("line", { class: "grid-line", x1: left, x2: width - right, y1: y(threshold), y2: y(threshold) }));
+    const label = svgElement("text", { class: "axis-label", x: left - 6, y: y(threshold) + 4, "text-anchor": "end" });
+    label.textContent = threshold;
+    svg.append(label);
+  }
+  const first = svgElement("text", { class: "axis-label", x: left, y: height - 6 });
+  first.textContent = points[0].date;
+  const last = svgElement("text", { class: "axis-label", x: width - right, y: height - 6, "text-anchor": "end" });
+  last.textContent = points[points.length - 1].date;
+  svg.append(first, last);
+  svg.append(svgElement("polyline", {
+    class: "score-line",
+    points: points.map((trip, i) => `${x(i)},${y(trip.score)}`).join(" "),
+  }));
+  const tooltip = document.createElement("div");
+  tooltip.className = "chart-tooltip hidden";
+  const step = points.length > 1 ? (width - left - right) / (points.length - 1) : width;
+  points.forEach((trip, i) => {
+    const dot = svgElement("circle", { class: "score-dot", cx: x(i), cy: y(trip.score), r: 4 });
+    const hit = svgElement("rect", {
+      class: "hit", x: x(i) - Math.max(step, 12) / 2, y: top, width: Math.max(step, 12), height: height - top - bottom,
+    });
+    const show = () => {
+      dot.classList.add("active");
+      tooltip.textContent = `第 ${trip.ref} 趟 · ${trip.date} · ${trip.score} 分（${trip.grade}）`;
+      tooltip.style.left = `${(x(i) / width) * 100}%`;
+      tooltip.style.top = `${(y(trip.score) / height) * 100}%`;
+      tooltip.classList.remove("hidden");
+    };
+    const hide = () => { dot.classList.remove("active"); tooltip.classList.add("hidden"); };
+    hit.addEventListener("mouseenter", show);
+    hit.addEventListener("mouseleave", hide);
+    svg.append(dot, hit);
+  });
+  container.append(svg, tooltip);
+}
+
+function renderTripDetail(trip) {
+  const panel = document.getElementById("drv-trip-detail");
+  panel.replaceChildren();
+  if (!trip.detail) {
+    panel.classList.add("hidden");
+    return;
+  }
+  const title = document.createElement("h4");
+  title.textContent = `第 ${trip.ref} 趟 · ${trip.date} · ${trip.score ?? "—"} 分`;
+  const bars = document.createElement("div");
+  bars.className = "category-bars";
+  categoryBarRows(bars, trip.detail.categories.map((c) => [c.label, c.score]));
+  const list = document.createElement("ul");
+  list.className = "deduction-list";
+  for (const deduction of trip.detail.top_deductions) {
+    const item = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = `${deduction.label}（${deduction.category_label}）· ${deduction.observed_value} ${deduction.unit_label}`;
+    if (deduction.definition) {
+      const definition = document.createElement("small");
+      definition.className = "deduction-definition";
+      definition.textContent = `定義：${deduction.definition}`;
+      text.append(definition);
+    }
+    const points = document.createElement("strong");
+    points.textContent = `-${deduction.points_lost} 分`;
+    item.append(text, points);
+    list.append(item);
+  }
+  if (!trip.detail.top_deductions.length) {
+    const item = document.createElement("li");
+    item.textContent = trip.detail.status === "scored" ? "本趟沒有明顯扣分項目。" : "距離太短，不計算安全分數。";
+    list.append(item);
+  }
+  panel.append(title, bars, list);
+  if (state.reports.has(trip.ref)) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "open-report";
+    open.textContent = "開啟這趟的完整安全報告 →";
+    open.addEventListener("click", () => {
+      showReport(trip.ref);
+      activateView("postdrive");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    panel.append(open);
+  }
+  panel.classList.remove("hidden");
+}
+
+function renderDriver(driver) {
+  setText("drv-rank", rankText(driver));
+  setText(
+    "drv-road",
+    driver.road_adjusted_average === undefined || driver.road_adjusted_average === null
+      ? "路況調整：資料不足"
+      : `路況調整後平均 ${driver.road_adjusted_average} 分（${driver.road_adjusted_trip_count} 趟）`
+  );
+  setText("drv-average", driver.average_score === null ? null : `${driver.average_score} 分`);
+  setText("drv-recent-label", `最近 ${driver.recent_trips} 趟平均`);
+  setText("drv-recent", driver.recent_average_score === null ? null : `${driver.recent_average_score} 分`);
+  const trend = document.getElementById("drv-trend");
+  trend.textContent = driver.trend_label;
+  trend.className = `trend-chip trend-${driver.trend}`;
+  setText("drv-trips", `${driver.trip_count} 趟（${driver.scored_trip_count} 趟有分數）／${driver.total_distance_km ?? 0} km`);
+  setText("drv-camera", `${driver.camera_blocked_trip_count} 趟`);
+
+  renderScoreChart(document.getElementById("drv-chart"), driver.trips);
+  categoryBarRows(
+    document.getElementById("drv-categories"),
+    Object.entries(driver.category_averages)
+  );
+  const deductions = document.getElementById("drv-deductions");
+  deductions.replaceChildren();
+  for (const item of driver.frequent_deductions) {
+    const row = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = `${item.label} · 出現在 ${item.trips} 趟的主要扣分`;
+    const points = document.createElement("strong");
+    points.textContent = `共 -${item.points_lost} 分`;
+    row.append(text, points);
+    deductions.append(row);
+  }
+  if (!driver.frequent_deductions.length) {
+    const row = document.createElement("li");
+    row.textContent = "目前沒有扣分紀錄。";
+    deductions.append(row);
+  }
+
+  const body = document.getElementById("drv-trip-rows");
+  body.replaceChildren();
+  renderTripDetail({ detail: null });
+  for (const trip of [...driver.trips].reverse()) {
+    const row = document.createElement("tr");
+    const goalMark = { achieved: "✓", missed: "✗" }[trip.goal_status] ?? "—";
+    const cells = [
+      trip.ref, trip.date, trip.plate ?? "—", trip.distance_km === null ? "—" : `${trip.distance_km} km`,
+      trip.score ?? "不評分", null, goalMark, trip.top_deduction ?? (trip.camera_blocked ? "鏡頭遮蔽" : "—"),
+    ];
+    cells.forEach((value, index) => {
+      const cell = document.createElement("td");
+      if (index === 5) {
+        const badge = document.createElement("span");
+        badge.className = gradeClass(trip.grade);
+        badge.textContent = trip.grade ?? "—";
+        cell.append(badge);
+      } else if (index === 6) {
+        cell.textContent = value;
+        cell.className = `goal-mark ${trip.goal_status ?? ""}`;
+        cell.title = { achieved: "達成出發前的改善目標", missed: "未達成出發前的改善目標" }[trip.goal_status] ?? "沒有改善目標";
+      } else {
+        cell.textContent = value;
+        if (index === 0 || index === 3 || index === 4) cell.className = "num";
+      }
+      row.append(cell);
+    });
+    if (trip.detail) {
+      row.className = "clickable";
+      row.tabIndex = 0;
+      const select = () => {
+        body.querySelectorAll("tr.selected").forEach((r) => r.classList.remove("selected"));
+        row.classList.add("selected");
+        renderTripDetail(trip);
+      };
+      row.addEventListener("click", select);
+      row.addEventListener("keydown", (event) => { if (event.key === "Enter") select(); });
+    }
+    body.append(row);
+  }
+}
+
+function goalSentence(check) {
+  const comparator = check.direction === "higher_is_worse" ? "≤" : "≥";
+  return `目標：${check.target_label} ${comparator} ${check.goal_value} ${check.unit_label}（出發前你近 7 天的平均）· 這趟 ${check.trip_value} ${check.unit_label}`;
+}
+
+function renderGoalCheck(check) {
+  const card = document.getElementById("goal-check");
+  const badge = document.getElementById("goal-check-badge");
+  if (!check || check.status === "no_goal" || check.status === "unavailable") {
+    setText("goal-check-title", "這趟出發前沒有設定改善目標");
+    setText("goal-check-detail", "近期資料不足以選出改善目標。");
+    badge.textContent = "—";
+    badge.className = "goal-badge";
+    setText("goal-check-streak", "");
+    card.classList.remove("hidden");
+    return;
+  }
+  const achieved = check.status === "achieved";
+  setText("goal-check-title", `${achieved ? "達成" : "未達成"}：${check.target_label}`);
+  setText("goal-check-detail", goalSentence(check));
+  badge.textContent = achieved ? "✓ 達成" : "✗ 未達成";
+  badge.className = `goal-badge ${check.status}`;
+  setText("goal-check-streak", achieved ? `連續達成 ${check.streak} 趟` : "下一趟再挑戰");
+  card.classList.remove("hidden");
+}
+
+function renderLastGoal(check) {
+  const line = document.getElementById("last-goal");
+  if (!check || check.status === "no_goal" || check.status === "unavailable") {
+    line.classList.add("hidden");
+    return;
+  }
+  line.textContent = check.status === "achieved"
+    ? `上一趟目標（${check.target_label}）✓ 達成，已連續 ${check.streak} 趟，繼續保持！`
+    : `上一趟目標（${check.target_label}）✗ 未達成：這趟 ${check.trip_value}，目標 ${check.goal_value} ${check.unit_label}。今天再試一次。`;
+  line.classList.remove("hidden");
+}
+
+function renderRoadContext(context, officialScore) {
+  const card = document.getElementById("road-context");
+  if (!context) {
+    card.classList.add("hidden");
+    return;
+  }
+  const delta = context.adjusted_score !== null && officialScore !== null ? context.adjusted_score - officialScore : null;
+  const city = context.city_share_pct === null ? "" : `這趟約 ${context.city_share_pct}% 在市區道路；`;
+  const change = delta === null ? "" : delta === 0 ? "路況調整後分數不變" : `路況調整後 ${context.adjusted_score} 分（${delta > 0 ? "+" : ""}${delta}）`;
+  setText("road-summary", `${city}${change}`);
+  const items = document.getElementById("road-items");
+  items.replaceChildren();
+  for (const item of context.items) {
+    const box = document.createElement("div");
+    box.className = `road-item ${item.you < item.typical ? "better" : item.you > item.typical ? "worse" : ""}`;
+    const label = document.createElement("span");
+    label.textContent = item.label;
+    const you = document.createElement("strong");
+    you.textContent = `你 ${item.you} ${item.unit}`;
+    const typical = document.createElement("em");
+    typical.textContent = `一般 ${item.typical} ${item.unit}`;
+    box.append(label, you, typical);
+    items.append(box);
+  }
+  card.classList.remove("hidden");
+}
+
+function renderAlertReview(review) {
+  const card = document.getElementById("alert-review");
+  if (!review) {
+    card.classList.add("hidden");
+    return;
+  }
+  const list = document.getElementById("alert-list");
+  list.replaceChildren();
+  card.classList.remove("hidden");
+  if (!review.in_dataset) {
+    setText("alert-summary", "這趟沒有足夠的連續資料做 60 秒預測");
+    setText("alert-note", "60 秒預測需要過去 5 分鐘的連續車輛資料。");
+    return;
+  }
+  if (review.alert_count === 0) {
+    setText("alert-summary", "這趟全程風險都不高，系統不需要出聲提醒 👍");
+  } else {
+    setText(
+      "alert-summary",
+      `系統會提醒你 ${review.alert_count} 次，其中 ${review.event_followed_count} 次在 60 秒內真的發生了風險事件`
+    );
+  }
+  for (const alert of review.alerts) {
+    const item = document.createElement("li");
+    item.className = alert.event_label ? "hit" : "";
+    const time = document.createElement("span");
+    time.className = "alert-time";
+    time.textContent = `第 ${alert.trip_minute} 分鐘`;
+    const risk = document.createElement("span");
+    risk.className = "alert-risk";
+    risk.textContent = `${alert.escalation ? "風險升高 · " : ""}預測風險 ${alert.risk_pct}%`;
+    const outcome = document.createElement("span");
+    outcome.className = "alert-outcome";
+    outcome.textContent = alert.event_label
+      ? `${alert.lead_seconds} 秒後發生${alert.event_label}，提醒能提早 ${alert.lead_seconds} 秒`
+      : "60 秒內沒有發生事件";
+    item.append(time, risk, outcome);
+    list.append(item);
+  }
+  if (review.alert_count > review.alerts.length) {
+    const more = document.createElement("li");
+    more.textContent = `另有 ${review.alert_count - review.alerts.length} 次提醒未列出`;
+    list.append(more);
+  }
+  setText(
+    "alert-note",
+    `回放：這些資料錄製時還沒有 SafePilot，駕駛當時並沒有聽到提醒。模型 v1_xgboost、提醒規則 Alert Policy V1（實驗性）。資料期間：${review.split_label}。`
+  );
+}
+
+function rankText(driver) {
+  return driver.series_rank
+    ? `${driver.primary_type} 系 ${driver.series_ranked_size} 人中第 ${driver.series_rank} 名`
+    : "評分行程不足 10 趟，暫不排名";
+}
+
+function showReport(ref) {
+  const report = state.reports.get(ref);
+  if (!report) return;
+  assertContract("postdrive", report, state.source);
+  document.getElementById("report-select").value = String(ref);
+  setText("postdrive-for", `${state.driver.driver_name} · 第 ${ref} 趟 · ${report.date} · ${report.plate ?? "—"}`);
+  setText("report-meta", `「第幾趟」是在全部 ${state.driver.trip_count} 趟中的順序（含太短不評分的行程）；可查看最近 ${state.reports.size} 趟有分數的完整報告`);
+  renderPostdrive(report, state.source);
+  renderGoalCheck(report.goal_check);
+  renderRoadContext(report.road_context, report.safety_score.overall_score);
+  renderAlertReview(report.alert_review);
+}
+
+async function selectDriver(driverId) {
+  const entry = state.index.drivers.find((driver) => driver.driver_id === driverId);
+  const data = await loadView(`driver-${driverId}`, state.source);
+  assertContract("predrive", data.predrive, state.source);
+  state.driver = entry;
+  state.reports = new Map(data.reports.map((report) => [report.ref, report]));
+  document.getElementById("driver-select").value = driverId;
+  setText("driver-meta", `${entry.primary_type} 系${entry.new_driver ? " · 新進駕駛" : ""} · 平均 ${entry.average_score ?? "—"} 分 · ${rankText(entry)}`);
+
+  setText("predrive-for", `${entry.driver_name} · 下一趟出發前`);
+  renderPredrive(data.predrive);
+  renderLastGoal(data.predrive.last_goal_check);
+
+  const reportSelect = document.getElementById("report-select");
+  reportSelect.replaceChildren();
+  for (const report of [...data.reports].reverse()) {
+    const option = document.createElement("option");
+    option.value = String(report.ref);
+    const score = report.safety_score.overall_score;
+    option.textContent = `第 ${report.ref} 趟 · ${report.date} · ${score === null ? "不評分" : `${score} 分`}`;
+    reportSelect.append(option);
+  }
+  if (data.reports.length) showReport(data.reports[data.reports.length - 1].ref);
+
+  renderDriver(entry);
+}
+
+async function loadDriverIndex() {
+  if (useLocalData) {
+    try {
+      state.source = "local";
+      return await loadView("drivers", "local");
+    } catch (error) {
+      console.warn("Local driver views unavailable, falling back to synthetic", error);
+    }
+  }
+  state.source = "synthetic";
+  const index = await loadView("drivers", "synthetic");
+  if (useLocalData) {
+    index.mock_note = `尚未產生本機駕駛資料（請先執行 hino-analytics drivers 與 export-demo），整頁改用 Synthetic Demo。${index.mock_note}`;
+  }
+  return index;
+}
+
 function showError() {
   document.getElementById("global-error").classList.remove("hidden");
 }
@@ -306,23 +704,36 @@ async function initialize() {
     button.addEventListener("click", () => activateView(button.dataset.view));
   });
   try {
-    document.getElementById("local-banner").classList.toggle("hidden", !useLocalData);
-    const [predrive, driving, postdrive] = await Promise.all(
-      ["predrive", "driving", "postdrive"].map(async (viewName) => {
-        const source = sourceFor(viewName);
-        const provider = source === "local" ? localProvider : syntheticProvider;
-        const data = await provider.load(viewName);
-        assertContract(viewName, data, source);
-        return data;
-      })
-    );
-    renderPredrive(predrive);
+    const [driving, index] = await Promise.all([loadView("driving", "synthetic"), loadDriverIndex()]);
     renderDriving(driving);
-    renderPostdrive(postdrive, sourceFor("postdrive"));
+    state.index = index;
+    document.getElementById("local-banner").classList.toggle("hidden", state.source !== "local");
+    setText("drivers-mock-note", index.mock_note);
+
+    const select = document.getElementById("driver-select");
+    select.replaceChildren();
+    const drivers = index.drivers.filter((driver) => driver.trip_count > 0);
+    for (const driver of drivers) {
+      const option = document.createElement("option");
+      option.value = driver.driver_id;
+      option.textContent = `${driver.driver_name}（共 ${driver.trip_count} 趟，${driver.scored_trip_count} 趟有分數）`;
+      select.append(option);
+    }
+    select.addEventListener("change", () => selectDriver(select.value).catch(handleLoadError));
+    document.getElementById("report-select").addEventListener("change", (event) => {
+      showReport(Number(event.target.value));
+    });
+    const requested = params.get("driver");
+    const first = drivers.find((driver) => driver.driver_id === requested) ?? drivers[0];
+    if (first) await selectDriver(first.driver_id);
   } catch (error) {
-    console.error("SafePilot synthetic demo load failed", error);
-    showError();
+    handleLoadError(error);
   }
+}
+
+function handleLoadError(error) {
+  console.error("SafePilot demo load failed", error);
+  showError();
 }
 
 document.addEventListener("DOMContentLoaded", initialize);

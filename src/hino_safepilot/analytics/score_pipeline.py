@@ -6,6 +6,7 @@ import json
 import shutil
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import median
 from time import perf_counter
@@ -171,40 +172,6 @@ def load_predrive_briefing(path: Path, trip_id: str) -> PreDriveBriefing:
     raise KeyError("Pre-drive briefing not found")
 
 
-def pick_demo_trip(scores_root: Path) -> str:
-    """Pick the scored trip nearest the median score that also has a usable briefing."""
-
-    scores = {
-        record["trip_id"]: TripSafetyScore.model_validate(record)
-        for record in _read_jsonl(scores_root / "trip_safety_scores.jsonl")
-    }
-    candidates: list[TripSafetyScore] = []
-    baseline_available: dict[str, bool] = {}
-    for record in _read_jsonl(scores_root / "predrive_briefings.jsonl"):
-        briefing = PreDriveBriefing.model_validate(record["briefing"])
-        score = scores.get(record["subject_trip_id"])
-        if (
-            score
-            and score.overall_score is not None
-            and briefing.recent_scored_trip_count >= 1
-            and briefing.daily_goal is not None
-            and briefing.daily_goal.target_metric
-        ):
-            candidates.append(score)
-            baseline_available[score.trip_id] = (
-                briefing.daily_goal.evidence_summary.get("baseline_value") is not None
-            )
-    if not candidates:
-        raise LookupError("No trip has both a score and a usable pre-drive briefing")
-    with_baseline = {trip_id for trip_id, has_baseline in baseline_available.items() if has_baseline}
-    if with_baseline:
-        candidates = [score for score in candidates if score.trip_id in with_baseline]
-    middle = median(score.overall_score or 0 for score in candidates)
-    return min(
-        candidates, key=lambda score: (abs((score.overall_score or 0) - middle), score.trip_start)
-    ).trip_id
-
-
 def _round(value: float | None, digits: int = 1) -> float | None:
     return None if value is None else round(value, digits)
 
@@ -355,3 +322,376 @@ def local_postdrive_view(
         "ai_report": ai_report,
         "generation_mode": generation_mode,
     }
+
+
+def build_driver_safety(
+    repo_root: Path,
+    *,
+    scores_root: Path = Path("data/processed/safety_scores"),
+    fuel_root: Path = Path("data/processed/fuel"),
+    output_root: Path = Path("data/processed/driver_safety"),
+) -> dict[str, Any]:
+    """Attribute trip scores to simulated drivers and write one history per driver."""
+
+    from .driver_safety import build_driver_histories, load_virtual_drivers
+
+    repo = repo_root.resolve()
+    scores_path = _safe_resolve(repo, scores_root) / "trip_safety_scores.jsonl"
+    output = _safe_resolve(repo, output_root)
+    allowed_output = (repo / "data" / "processed").resolve()
+    if output == allowed_output or allowed_output not in output.parents:
+        raise ValueError("Driver safety output must be below data/processed/")
+    if output.exists():
+        raise FileExistsError(f"Refusing to overwrite driver safety output: {output}")
+    if not scores_path.is_file():
+        raise FileNotFoundError("Run `hino-analytics score` first: trip safety scores are required")
+
+    drivers = load_virtual_drivers(_safe_resolve(repo, fuel_root))
+    scores = [TripSafetyScore.model_validate(record) for record in _read_jsonl(scores_path)]
+    version = scores[0].scoring_version if scores else "unknown"
+    histories, unassigned = build_driver_histories(scores, drivers, scoring_version=version)
+
+    staging = output.with_name(f".{output.name}.staging-{uuid4().hex}")
+    staging.mkdir(parents=True, exist_ok=False)
+    try:
+        count = _write_jsonl(
+            staging / "driver_histories.jsonl",
+            (history.model_dump(mode="json") for history in histories),
+        )
+        manifest = {
+            "driver_safety_version": "driver-safety-history-v1",
+            "identity_basis": "simulated driver roster (vehicle-day assignment)",
+            "mock_note": drivers.mock_note,
+            "deterministic_only": True,
+            "external_api_calls": 0,
+            "output": {
+                "driver_count": count,
+                "attributed_trip_count": sum(history.trip_count for history in histories),
+                "unassigned_trip_count": unassigned,
+                "drivers_without_trips": sum(history.trip_count == 0 for history in histories),
+            },
+        }
+        (staging / "driver_safety_manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        staging.replace(output)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    return manifest
+
+
+def _latest_scored(scores: list[float | None], limit: int) -> set[int]:
+    """Indices of the latest ``limit`` trips that have a score (short trips are skipped)."""
+
+    return set([index for index, score in enumerate(scores) if score is not None][-limit:])
+
+
+def local_drivers_view(
+    histories: list[dict[str, Any]],
+    scores_by_trip: dict[str, TripSafetyScore],
+    definitions: dict[str, str] | None = None,
+    *,
+    detail_limit: int = 15,
+    goal_checks: dict[str, dict] | None = None,
+) -> dict[str, Any]:
+    """Identifier-free driver history view; trips are referenced by sequence number only."""
+
+    goal_checks = goal_checks or {}
+    drivers = []
+    for history in histories:
+        trips = history["trips"]
+        detailed = _latest_scored([trip["overall_score"] for trip in trips], detail_limit)
+        drivers.append(
+            {
+                "driver_id": history["driver_id"],
+                "driver_name": history["driver_name"],
+                "primary_type": history["primary_type"],
+                "new_driver": history["new_driver"],
+                "trip_count": history["trip_count"],
+                "scored_trip_count": history["scored_trip_count"],
+                "total_distance_km": _round(history["total_distance_km"], 0),
+                "average_score": _round(history["average_score"], 0),
+                "grade_counts": history["grade_counts"],
+                "category_averages": {
+                    label: _round(value, 0) for label, value in history["category_averages"].items()
+                },
+                "frequent_deductions": history["frequent_deductions"],
+                "recent_trips": history["recent_trips"],
+                "recent_average_score": _round(history["recent_average_score"], 0),
+                "previous_average_score": _round(history["previous_average_score"], 0),
+                "trend": history["trend"],
+                "trend_label": TREND_LABELS[history["trend"]],
+                "camera_blocked_trip_count": history["camera_blocked_trip_count"],
+                "series_rank": history.get("series_rank"),
+                "series_ranked_size": history.get("series_ranked_size"),
+                "monthly_average_scores": history["monthly_average_scores"],
+                "trips": [
+                    {
+                        "ref": index + 1,
+                        "date": trip["trip_start"][:10],
+                        "plate": trip["mock_plate"],
+                        "distance_km": _round(trip["distance_km"]),
+                        "score": _round(trip["overall_score"], 0),
+                        "grade": trip["grade"],
+                        "top_deduction": trip["top_deduction"],
+                        "camera_blocked": trip["dms_reliability"] == "camera_blocked",
+                        "goal_status": goal_checks.get(trip["trip_id"], {}).get("status"),
+                        "detail": score_view(scores_by_trip[trip["trip_id"]], definitions)
+                        if index in detailed and trip["trip_id"] in scores_by_trip
+                        else None,
+                    }
+                    for index, trip in enumerate(trips)
+                ],
+            }
+        )
+    return {
+        "contract_version": "local-drivers-v1",
+        "view": "drivers",
+        "data_classification": "private_local",
+        "prototype_marker": LOCAL_MARKER,
+        "mock_note": histories[0]["mock_note"] if histories else "",
+        "drivers": drivers,
+    }
+
+
+SPLIT_LABELS = {
+    "train": "訓練期（模型訓練時看過這趟，結果偏樂觀）",
+    "validation": "驗證期",
+    "test": "測試期",
+}
+
+
+def alert_review_view(
+    reviews: dict[str, dict] | None, trip_id: str, trip_start, summary: TripSummary, limit: int = 8
+) -> dict[str, Any] | None:
+    """Identifier-free 60-second alert replay for one trip (None when alerts were not built)."""
+
+    if reviews is None:
+        return None
+    review = reviews.get(trip_id)
+    in_dataset = review is not None
+    alerts = review["alerts"] if review else []
+    return {
+        "available": True,
+        "split_label": SPLIT_LABELS.get(review["split"], review["split"]) if review else None,
+        "alert_count": len(alerts),
+        "event_followed_count": sum(alert["event_name"] is not None for alert in alerts),
+        "in_dataset": in_dataset,
+        "alerts": [
+            {
+                "trip_minute": round(
+                    (datetime.fromisoformat(alert["timestamp"]) - trip_start).total_seconds() / 60, 1
+                ),
+                "risk_pct": round(alert["probability"] * 100),
+                "event_label": ITEM_LABELS.get(alert["event_name"], alert["event_name"])
+                if alert["event_name"]
+                else None,
+                "lead_seconds": alert["lead_seconds"],
+                "escalation": alert["reason"] == "risk_escalation",
+            }
+            for alert in alerts[:limit]
+        ],
+    }
+
+
+def road_context_view(
+    context: dict | None,
+    summary: TripSummary,
+    scorer: SafetyScorer,
+    fleet: dict[str, float],
+) -> dict[str, Any] | None:
+    """Same-road comparison and road-adjusted score for one trip (None without context)."""
+
+    from .road_context import road_factors
+
+    if context is None:
+        return None
+    adjusted = scorer.score_trip(summary, road_factors(context, fleet))
+    # Totals per trip: counts, idle minutes, over-limit seconds (shown in minutes).
+    observed, typical = context["observed"], context["typical"]
+    return {
+        "adjusted_score": _round(adjusted.overall_score, 0),
+        "adjusted_grade": adjusted.grade,
+        "city_share_pct": round(context["city_share"] * 100) if context["city_share"] is not None else None,
+        "items": [
+            {"label": "急加速", "you": round(observed["harsh_acc_per_km"], 1),
+             "typical": round(typical["harsh_acc_per_km"], 1), "unit": "次"},
+            {"label": "急減速", "you": round(observed["harsh_brake_per_km"], 1),
+             "typical": round(typical["harsh_brake_per_km"], 1), "unit": "次"},
+            {"label": "怠速", "you": round(observed["idle_min_per_km"], 1),
+             "typical": round(typical["idle_min_per_km"], 1), "unit": "分鐘"},
+            {"label": "超速時間", "you": round(observed["overspeed_share"] / 60, 1),
+             "typical": round(typical["overspeed_share"] / 60, 1), "unit": "分鐘"},
+        ],
+    }
+
+
+def build_driver_views(
+    repo_root: Path,
+    service: Any,
+    *,
+    score_config_path: Path = Path("config/safety_score_v1.json"),
+    goal_config_path: Path = Path("config/behavior_goal_v0.json"),
+    definitions_path: Path = Path("config/event_definitions_v1.json"),
+    fuel_root: Path = Path("data/processed/fuel"),
+    detail_limit: int = 15,
+) -> dict[str, dict[str, Any]]:
+    """Local demo files keyed by name: the driver index plus one file per simulated driver.
+
+    Each driver file holds the briefing for the driver's *next* trip (goal and reminders
+    from that driver's own past trips only) and full reports for their latest trips.
+    """
+
+    from .driver_safety import attribute_trips, goal_checks, load_virtual_drivers
+    from .goals import WeaknessScorer, load_goal_config
+    from .pipeline import goal_baselines
+
+    repo = repo_root.resolve()
+    processed = repo / "data" / "processed"
+    histories_path = processed / "driver_safety" / "driver_histories.jsonl"
+    if not histories_path.is_file():
+        raise FileNotFoundError("Run `hino-analytics drivers` first: driver histories are required")
+    score_config = load_safety_score_config(_safe_resolve(repo, score_config_path))
+    goal_config = load_goal_config(_safe_resolve(repo, goal_config_path))
+    goal_scorer = WeaknessScorer(goal_config)
+    definitions = load_event_definitions(_safe_resolve(repo, definitions_path))
+    categories = {name: str(item["label"]) for name, item in score_config.categories.items()}
+    scores = [
+        TripSafetyScore.model_validate(record)
+        for record in _read_jsonl(processed / "safety_scores" / "trip_safety_scores.jsonl")
+    ]
+    summaries = {
+        record["trip_id"]: TripSummary.model_validate(record)
+        for record in _read_jsonl(processed / "analytics" / "trip_summaries.jsonl")
+    }
+    drivers = load_virtual_drivers(_safe_resolve(repo, fuel_root))
+    groups, _ = attribute_trips(scores, drivers)
+    histories = _read_jsonl(histories_path)
+    road_root = processed / "road_context"
+    road_contexts = (
+        {record["trip_id"]: record for record in _read_jsonl(road_root / "trip_road_context.jsonl")}
+        if (road_root / "trip_road_context.jsonl").is_file()
+        else {}
+    )
+    road_fleet = (
+        json.loads((road_root / "road_context_manifest.json").read_text(encoding="utf-8"))["fleet_typical_rates"]
+        if road_contexts
+        else {}
+    )
+    safety_scorer = SafetyScorer(score_config)
+    alerts_path = processed / "trip_alerts" / "trip_alert_reviews.jsonl"
+    alert_reviews = (
+        {record["trip_id"]: record for record in _read_jsonl(alerts_path)}
+        if alerts_path.is_file()
+        else None
+    )
+    rate_floor_km = float(score_config.raw["rate_distance_floor_km"])
+    checks_by_driver = {
+        driver_id: goal_checks(
+            trips, summaries, goal_config, profile_key=f"driver:{driver_id}", rate_floor_km=rate_floor_km
+        )
+        for driver_id, trips in groups.items()
+    }
+
+    views: dict[str, dict[str, Any]] = {
+        "drivers": local_drivers_view(
+            histories,
+            {score.trip_id: score for score in scores},
+            definitions,
+            detail_limit=detail_limit,
+            goal_checks={tid: check for checks in checks_by_driver.values() for tid, check in checks.items()},
+        )
+    }
+    for history in histories:
+        driver_id = history["driver_id"]
+        trips = groups.get(driver_id, [])
+        if not trips:
+            continue
+        key = f"driver:{driver_id}"
+        driver_summaries = [
+            summaries[score.trip_id].model_copy(update={"vehicle_profile_id": key})
+            for score, _ in trips
+            if score.trip_id in summaries
+        ]
+        driver_scores = [score.model_copy(update={"vehicle_profile_id": key}) for score, _ in trips]
+        cutoff = max(score.trip_end for score in driver_scores) + timedelta(seconds=1)
+        baselines = goal_baselines(driver_summaries, key, cutoff, goal_config)
+        goal = goal_scorer.daily_goal(
+            vehicle_profile_id=key,
+            effective_at=cutoff,
+            scores=goal_scorer.score(
+                baselines["recent"],
+                baselines["historical"],
+                baselines["trend_current"],
+                baselines["trend_previous"],
+            ),
+        )
+        briefing = build_predrive_briefing(
+            driver_scores,
+            vehicle_profile_id=key,
+            cutoff_exclusive=cutoff,
+            config=score_config,
+            daily_goal=goal,
+        )
+        message = service.daily_goal(goal).message.model_dump(mode="json") if goal.target_metric else None
+
+        checks = checks_by_driver.get(driver_id, {})
+        reports = []
+        for index in sorted(_latest_scored([score.overall_score for score, _ in trips], detail_limit)):
+            score, alias = trips[index]
+            summary = summaries.get(score.trip_id)
+            if summary is None:
+                continue
+            result = service.trip_report(summary)
+            reports.append(
+                {
+                    "ref": index + 1,
+                    "date": score.trip_start.date().isoformat(),
+                    "plate": drivers.plates.get(alias),
+                    **local_postdrive_view(
+                        summary,
+                        score,
+                        result.report.model_dump(mode="json"),
+                        result.generation_mode,
+                        definitions,
+                    ),
+                    "goal_check": checks.get(score.trip_id),
+                    "alert_review": alert_review_view(
+                        alert_reviews, score.trip_id, score.trip_start, summary
+                    ),
+                    "road_context": road_context_view(
+                        road_contexts.get(score.trip_id), summary, safety_scorer, road_fleet
+                    ),
+                }
+            )
+        if road_contexts:
+            from .road_context import road_factors
+
+            adjusted = [
+                safety_scorer.score_trip(
+                    summaries[score.trip_id], road_factors(road_contexts[score.trip_id], road_fleet)
+                ).overall_score
+                for score, _ in trips
+                if score.overall_score is not None
+                and score.trip_id in road_contexts
+                and score.trip_id in summaries
+            ]
+            entry = next(d for d in views["drivers"]["drivers"] if d["driver_id"] == driver_id)
+            entry["road_adjusted_average"] = round(sum(adjusted) / len(adjusted)) if adjusted else None
+            entry["road_adjusted_trip_count"] = len(adjusted)
+        views[f"driver-{driver_id}"] = {
+            "contract_version": "local-driver-v1",
+            "view": "driver",
+            "data_classification": "private_local",
+            "prototype_marker": LOCAL_MARKER,
+            "driver_id": driver_id,
+            "driver_name": history["driver_name"],
+            "predrive": {
+                **local_predrive_view(briefing, message, categories),
+                "last_goal_check": reports[-1]["goal_check"] if reports else None,
+            },
+            "reports": reports,
+        }
+    return views

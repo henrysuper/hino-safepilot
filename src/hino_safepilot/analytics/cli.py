@@ -12,16 +12,13 @@ from hino_safepilot.ai.service import ReportService
 
 from .pipeline import build_analytics, load_daily_goal, load_trip_summary, resolve_config
 from .score_pipeline import (
+    build_driver_safety,
+    build_driver_views,
     build_safety_scores,
-    load_event_definitions,
     load_predrive_briefing,
     load_trip_score,
-    local_postdrive_view,
-    local_predrive_view,
-    pick_demo_trip,
     resolve_score_config,
 )
-from .scoring import load_safety_score_config
 
 
 def _score_parsers(subcommands: argparse._SubParsersAction) -> None:
@@ -35,11 +32,24 @@ def _score_parsers(subcommands: argparse._SubParsersAction) -> None:
         command.add_argument("--repo-root", type=Path, default=Path.cwd())
         command.add_argument("--trip-id", required=True)
         command.add_argument("--provider", choices=("mock", "gemini"), default=None)
+    road = subcommands.add_parser(
+        "road", help="Same-road typical behaviour per trip from the fuel behaviour map"
+    )
+    road.add_argument("--repo-root", type=Path, default=Path.cwd())
+    alerts = subcommands.add_parser(
+        "alerts", help="Replay the frozen 60-second model and Alert Policy V1 for every trip"
+    )
+    alerts.add_argument("--repo-root", type=Path, default=Path.cwd())
+    drivers = subcommands.add_parser(
+        "drivers", help="Attribute trip scores to the simulated driver roster (hino-fuel drivers)"
+    )
+    drivers.add_argument("--repo-root", type=Path, default=Path.cwd())
+    drivers.add_argument("--fuel-root", type=Path, default=Path("data/processed/fuel"))
+    drivers.add_argument("--output-root", type=Path, default=Path("data/processed/driver_safety"))
     export = subcommands.add_parser(
         "export-demo", help="Write private local demo views below data/processed/demo_views"
     )
     export.add_argument("--repo-root", type=Path, default=Path.cwd())
-    export.add_argument("--trip-id", default=None, help="Default: a median-score trip")
     export.add_argument("--provider", choices=("mock", "gemini"), default=None)
     export.add_argument("--score-config", type=Path, default=Path("config/safety_score_v1.json"))
     export.add_argument(
@@ -55,13 +65,54 @@ def _run_score_command(args: argparse.Namespace) -> int:
         )
         print(json.dumps(manifest, ensure_ascii=False, indent=2))
         return 0
+    if args.command == "road":
+        from .road_context import build_road_context
+
+        print(json.dumps(build_road_context(repo), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "alerts":
+        from .trip_alerts import build_trip_alert_reviews
+
+        print(json.dumps(build_trip_alert_reviews(repo), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "drivers":
+        manifest = build_driver_safety(
+            repo, fuel_root=args.fuel_root, output_root=args.output_root
+        )
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
+        return 0
     analytics_root = repo / "data" / "processed" / "analytics"
     scores_root = repo / "data" / "processed" / "safety_scores"
     service = ReportService(provider_from_environment(args.provider))
-    trip_id = args.trip_id
-    if args.command == "export-demo" and trip_id is None:
-        trip_id = pick_demo_trip(scores_root)
-    briefing = load_predrive_briefing(scores_root / "predrive_briefings.jsonl", trip_id)
+    if args.command == "export-demo":
+        views = build_driver_views(
+            repo,
+            service,
+            score_config_path=args.score_config,
+            definitions_path=args.event_definitions,
+        )
+        output = repo / "data" / "processed" / "demo_views"
+        output.mkdir(parents=True, exist_ok=True)
+        for stale in output.glob("*.local.json"):
+            stale.unlink()
+        for name, view in views.items():
+            (output / f"{name}.local.json").write_text(
+                json.dumps(view, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+        print(
+            json.dumps(
+                {
+                    "written_files": len(views),
+                    "driver_files": sum(name.startswith("driver-") for name in views),
+                    "output": output.relative_to(repo).as_posix(),
+                    "serve": "python scripts/serve_demo.py",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    briefing = load_predrive_briefing(scores_root / "predrive_briefings.jsonl", args.trip_id)
     goal_message = (
         service.daily_goal(briefing.daily_goal)
         if briefing.daily_goal and briefing.daily_goal.target_metric
@@ -79,54 +130,14 @@ def _run_score_command(args: argparse.Namespace) -> int:
             )
         )
         return 0
-    summary = load_trip_summary(analytics_root / "trip_summaries.jsonl", trip_id)
-    score = load_trip_score(scores_root / "trip_safety_scores.jsonl", trip_id)
+    summary = load_trip_summary(analytics_root / "trip_summaries.jsonl", args.trip_id)
+    score = load_trip_score(scores_root / "trip_safety_scores.jsonl", args.trip_id)
     report = service.trip_report(summary)
-    if args.command == "postdrive":
-        print(
-            json.dumps(
-                {
-                    "safety_score": score.model_dump(mode="json"),
-                    "ai_report": report.model_dump(mode="json"),
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-        )
-        return 0
-
-    score_config = load_safety_score_config(repo / args.score_config)
-    categories = {name: str(item["label"]) for name, item in score_config.categories.items()}
-    views = {
-        "predrive": local_predrive_view(
-            briefing,
-            goal_message.message.model_dump(mode="json") if goal_message else None,
-            categories,
-        ),
-        "postdrive": local_postdrive_view(
-            summary,
-            score,
-            report.report.model_dump(mode="json"),
-            report.generation_mode,
-            load_event_definitions(repo / args.event_definitions),
-        ),
-    }
-    output = repo / "data" / "processed" / "demo_views"
-    output.mkdir(parents=True, exist_ok=True)
-    for name, view in views.items():
-        (output / f"{name}.local.json").write_text(
-            json.dumps(view, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
     print(
         json.dumps(
             {
-                "written": sorted(
-                    path.relative_to(repo).as_posix() for path in output.glob("*.local.json")
-                ),
-                "overall_score": views["postdrive"]["safety_score"]["overall_score"],
-                "grade": views["postdrive"]["safety_score"]["grade"],
-                "ai_generation_mode": report.generation_mode,
-                "serve": "python scripts/serve_demo.py",
+                "safety_score": score.model_dump(mode="json"),
+                "ai_report": report.model_dump(mode="json"),
             },
             ensure_ascii=False,
             indent=2,
@@ -159,7 +170,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.command in {"score", "predrive", "postdrive", "export-demo"}:
+        if args.command in {"score", "road", "alerts", "drivers", "predrive", "postdrive", "export-demo"}:
             return _run_score_command(args)
         if args.command == "build":
             manifest = build_analytics(

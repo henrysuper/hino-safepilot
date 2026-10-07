@@ -223,6 +223,50 @@ class PreDriveBriefing(ContractModel):
     scoring_version: str
 
 
+class DriverTripRecord(ContractModel):
+    """One scored trip attributed to a simulated driver through the vehicle-day assignment."""
+
+    trip_id: str
+    trip_start: datetime
+    vehicle_alias: str
+    mock_plate: str | None = None
+    distance_km: float | None = None
+    score_status: Literal["scored", "insufficient_exposure"]
+    overall_score: float | None = Field(default=None, ge=0, le=100)
+    grade: Literal["A", "B", "C", "D", "E"] | None = None
+    top_deduction: str | None = None
+    dms_reliability: Literal["ok", "camera_blocked"] = "ok"
+
+
+class DriverSafetyHistory(ContractModel):
+    contract_version: Literal["driver-safety-history-v1"] = "driver-safety-history-v1"
+    identity_basis: Literal["simulated driver roster (vehicle-day assignment)"] = (
+        "simulated driver roster (vehicle-day assignment)"
+    )
+    driver_id: str
+    driver_name: str
+    primary_type: int | None = None
+    new_driver: bool = False
+    trip_count: int = Field(ge=0)
+    scored_trip_count: int = Field(ge=0)
+    total_distance_km: float = Field(ge=0)
+    average_score: float | None = None
+    grade_counts: dict[str, int]
+    category_averages: dict[str, float]
+    frequent_deductions: list[dict[str, float | int | str]]
+    recent_trips: int = Field(gt=0)
+    recent_average_score: float | None = None
+    previous_average_score: float | None = None
+    trend: Literal["improving", "declining", "stable", "unavailable"]
+    camera_blocked_trip_count: int = Field(ge=0)
+    series_rank: int | None = Field(default=None, ge=1)
+    series_ranked_size: int | None = Field(default=None, ge=1)
+    monthly_average_scores: list[dict[str, float | int | str]]
+    trips: list[DriverTripRecord]
+    scoring_version: str
+    mock_note: str
+
+
 def json_safe(model: BaseModel) -> dict[str, Any]:
     """Return a JSON-compatible mapping without custom encoders at call sites."""
 

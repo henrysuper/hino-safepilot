@@ -6,7 +6,7 @@ import json
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Iterable
@@ -109,6 +109,33 @@ def _write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:
     return count
 
 
+def goal_baselines(
+    history: list[TripSummary], profile_id: str, cutoff: datetime, goal_config: Any
+) -> dict[str, BehaviorBaseline]:
+    """Past-only baselines used for weakness scoring, for any profile key (vehicle or driver)."""
+
+    def baseline(cutoff_exclusive: datetime, minimum: int, **window: int) -> BehaviorBaseline:
+        return build_behavior_baseline(
+            history,
+            vehicle_profile_id=profile_id,
+            cutoff_exclusive=cutoff_exclusive,
+            minimum_trip_count=minimum,
+            **window,
+        )
+
+    recent_days = int(goal_config.raw["recent_days"])
+    baseline_days = int(goal_config.raw["baseline_days"])
+    minimum = goal_config.minimum_trip_count
+    return {
+        "recent": baseline(cutoff, minimum, previous_days=recent_days),
+        "baseline_30d": baseline(cutoff, minimum, previous_days=baseline_days),
+        "previous_n": baseline(cutoff, minimum, previous_n_trips=10),
+        "historical": baseline(cutoff - timedelta(days=recent_days), minimum, previous_days=baseline_days),
+        "trend_current": baseline(cutoff, 1, previous_days=4),
+        "trend_previous": baseline(cutoff - timedelta(days=4), 1, previous_days=3),
+    }
+
+
 def build_analytics(config: AnalyticsBuildConfig) -> dict[str, Any]:
     """Build local deterministic analytics. This function performs no API calls."""
 
@@ -154,47 +181,16 @@ def build_analytics(config: AnalyticsBuildConfig) -> dict[str, Any]:
     for summary in sorted(summaries, key=lambda item: (item.basics.trip_start, item.trip_id)):
         history = by_profile[summary.vehicle_profile_id]
         cutoff = summary.basics.trip_start
-        recent = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff,
-            previous_days=int(goal_config.raw["recent_days"]),
-            minimum_trip_count=goal_config.minimum_trip_count,
+        baselines = goal_baselines(history, summary.vehicle_profile_id, cutoff, goal_config)
+        recent, baseline_30d, previous_n = (
+            baselines["recent"],
+            baselines["baseline_30d"],
+            baselines["previous_n"],
         )
-        baseline_30d = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff,
-            previous_days=int(goal_config.raw["baseline_days"]),
-            minimum_trip_count=goal_config.minimum_trip_count,
-        )
-        previous_n = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff,
-            previous_n_trips=10,
-            minimum_trip_count=goal_config.minimum_trip_count,
-        )
-        historical = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff - timedelta(days=int(goal_config.raw["recent_days"])),
-            previous_days=int(goal_config.raw["baseline_days"]),
-            minimum_trip_count=goal_config.minimum_trip_count,
-        )
-        trend_current = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff,
-            previous_days=4,
-            minimum_trip_count=1,
-        )
-        trend_previous = build_behavior_baseline(
-            history,
-            vehicle_profile_id=summary.vehicle_profile_id,
-            cutoff_exclusive=cutoff - timedelta(days=4),
-            previous_days=3,
-            minimum_trip_count=1,
+        historical, trend_current, trend_previous = (
+            baselines["historical"],
+            baselines["trend_current"],
+            baselines["trend_previous"],
         )
         scores = scorer.score(recent, historical, trend_current, trend_previous)
         goal = scorer.daily_goal(

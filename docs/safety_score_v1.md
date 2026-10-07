@@ -69,7 +69,8 @@ overall         = Σ category_weight × category_score
 python -m hino_safepilot.analytics score                       # 產生 data/processed/safety_scores/
 python -m hino_safepilot.analytics predrive  --trip-id <id>     # 行前提醒 JSON
 python -m hino_safepilot.analytics postdrive --trip-id <id>     # 行後分數 + 報告 JSON
-python -m hino_safepilot.analytics export-demo                  # 自動挑一趟中位數行程給 demo
+python -m hino_safepilot.analytics drivers                      # 對應虛擬駕駛（見第 5 節）
+python -m hino_safepilot.analytics export-demo                  # 每位駕駛一個 demo 檔
 python scripts/serve_demo.py                                    # http://127.0.0.1:8000/?source=local
 ```
 
@@ -81,3 +82,73 @@ AI 文字預設使用 mock；`--provider gemini` 在真實資料上須先取得�
 - 分數、提醒與 demo views 都只寫入 `data/processed/`（Git 忽略）。
 - `export-demo` 的輸出不含 trip / vehicle 識別碼、時間戳或座標。
 - `serve_demo.py` 只綁定 127.0.0.1，且 `/local-data/` 只對應 `*.local.json`。
+
+## 5. 安全歷史紀錄（虛擬駕駛）
+
+資料沒有駕駛身分。`hino-fuel drivers`（油耗派車主控台）會建立**模擬駕駛名單**，並把每個真實的「車-日」分配給同車系的一位模擬駕駛。`hino-analytics drivers` 沿用同一份分配，所以安全紀錄和派車主控台對「誰開了哪一趟」的認定一致。
+
+- 對應方式：行程的車輛 + 出發日期 → `driver_assignment.parquet` 的 `(enabled_code, day)` → 駕駛。沒有分配的車-日不歸給任何人（manifest 的 `unassigned_trip_count`）。
+- 每位駕駛：平均分數、等級分布、四個分項平均、最常被扣分的 3 項、最近 10 趟 vs 前 10 趟趨勢（資料月份不連續，用趟數比天數穩定）、鏡頭遮蔽趟數、每月平均、逐趟紀錄（模擬車牌）。
+- 駕駛名單、車牌與行程分配是**模擬資料**；分數來自真實行為。畫面與輸出都標示這點。
+
+需要的油耗端輸出（Git 忽略，向油耗組拿或自行執行 `hino-fuel segments → train → drivers`）：
+
+```text
+data/processed/fuel/driver_assignment.parquet
+data/processed/fuel/vehicle_aliases.json
+data/processed/fuel/artifacts/virtual_drivers.json
+data/processed/fuel/artifacts/mock_plates.json
+```
+
+```powershell
+python -m hino_safepilot.analytics drivers        # 產生 data/processed/driver_safety/
+python -m hino_safepilot.analytics export-demo    # drivers.local.json + driver-Dxx.local.json
+```
+
+Demo 頂端的「虛擬駕駛」選單控制整個頁面：
+
+- **行前安全提醒**：這位駕駛「下一趟出發前」的提醒。今日改善目標與提醒清單只用**這位駕駛自己**過去的行程計算（把行程改用駕駛當作 profile key，沿用同一套 `goal_baselines`／`WeaknessScorer`）。
+- **行後安全報告**：預設是最近一趟有分數的行程；可切換最近 15 趟有分數的行程。
+- **安全歷史紀錄**：點選行程可展開扣分明細，並可「開啟這趟的完整安全報告」跳到行後報告。
+
+第 4 個分頁「安全歷史紀錄」：選擇駕駛 → 摘要、每趟分數走勢、分項平均、常見扣分、行程紀錄（最近 15 趟可點開扣分明細）。尚未產生本機駕駛資料時，該分頁自動改用 Synthetic Demo 並註明。
+
+### 5.1 同車系排名
+
+每位駕駛依平均安全分數，在**同車系**內排名（1 = 最好）。有分數的行程不到 10 趟的駕駛不排名。排名對象是模擬駕駛，見 5.3。
+
+### 5.2 目標達成回饋（行前目標 → 行後結果）
+
+每一趟有分數的行程，先用**這趟出發前**、這位駕駛自己的行程算出當時的今日改善目標（與行前提醒同一套 `goal_baselines`／`WeaknessScorer`），再檢查這趟是否達成：
+
+- 目標值 = 目標指標在出發前近 7 天的平均（`evidence_summary.recent_value`）。
+- 這趟的值用與安全分數相同的算法（事件次數 ÷ max(里程, 10 km) × 100；怠速用怠速比例）。
+- 「越高越差」的指標：這趟 ≤ 目標值即達成；「越低越差」（燃油效率）：≥ 目標值即達成。
+- `streak` = 連續達成的趟數；未達成歸零，沒有目標的行程不影響連續紀錄。
+
+畫面：行後報告最上方「這趟的目標達成了嗎？」、行前目標卡下方「上一趟目標」、安全歷史紀錄表的「目標」欄（✓／✗）。
+
+> `UNRESOLVED`：「不高於近期平均」是偏寬鬆的門檻（真實資料中約 73% 的行程達成），用意是先建立正向回饋；是否改成「比平均再少 10%」等更嚴格的門檻，屬產品決策。
+
+### 5.3 模擬資料的限制（簡報時必須說明）
+
+模擬分配會依當天的行為風格挑選駕駛（`drivers.py` 的 `assign_drivers`），讓每位模擬駕駛的風格保持一致。因此**駕駛之間的差異與排名有一部分是分配規則造成的**，不能解讀為「找出了比較危險的駕駛」。每一趟的行為與分數是真實的；這部分展示的是流程，接上真實排班後即可直接套用。畫面頂端的說明文字已寫明這點。
+
+## 6. 路況公平比較與路況調整後分數
+
+`hino-analytics road` 讀取油耗組的路段（`hino-fuel segments` 產生的 `segments_5km.parquet`）與行為地圖（`data/processed/fuel/artifacts/`），對每一趟算出：
+
+- **實際**：急加速、急減速次數、怠速分鐘、超速秒數（油耗組的路段計數）。
+- **一般**：同樣道路類型 × 時段 × 500 公尺網格下，一般駕駛的期望值（油耗組的 prior × grid factor，未重新訓練）。
+
+**路況調整後分數**：對急加速、急減速、超速、怠速四項，用「這趟路段的一般值 ÷ 全車隊的一般值」（限制在 0.5–2 倍）去除實際值，再套同一個安全分數公式。市區比重高的行程，急減速的「一般值」本來就高，調整後不會被不公平地扣分。其他項目（DMS、PCS、車道偏移、引擎過載）不調整。官方安全分數維持不變，路況調整後分數是並列的參考。
+
+真實資料（1,878 趟有路段資料）：平均 +1.5 分；市區比重 ≥ 50% 的行程平均 +2.2 分，< 20% 的行程 +0.7 分。
+
+## 7. 60 秒預警回放
+
+`hino-analytics alerts` 用凍結的 XGBoost 模型（`v1_xgboost_1.0`，不重新訓練）為資料集中的每個 60 秒預測點打分，再逐趟重播 Alert Policy V1（進入門檻 0.5、冷卻 90 秒），並把每次提醒連到 60 秒內的下一個核心風險事件（急減速、PCS、車道偏移、疲勞、分心）。
+
+- 這些資料錄製時還沒有 SafePilot，**駕駛當時沒有聽到提醒**；回放只回答「如果當時有 SafePilot，會在哪裡提醒、之後發生了什麼」，不宣稱駕駛有反應。
+- 訓練期的行程模型看過，結果偏樂觀，畫面會標示資料期間。
+- 測試期：514 次提醒中有 309 次（60%）在 60 秒內發生事件，與 Label V0 的標記完全一致。

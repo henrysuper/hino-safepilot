@@ -1,0 +1,1679 @@
+{
+  "contract_version": "synthetic-driver-v1",
+  "view": "driver",
+  "data_classification": "synthetic",
+  "prototype_marker": "SYNTHETIC_DEMO",
+  "driver_id": "D01",
+  "driver_name": "模擬駕駛 01",
+  "predrive": {
+    "contract_version": "synthetic-predrive-v1",
+    "view": "predrive",
+    "data_classification": "synthetic",
+    "prototype_marker": "SYNTHETIC_DEMO",
+    "profile_type": "vehicle-linked behavior profile",
+    "daily_improvement_goal": {
+      "target_metric": "decelerate",
+      "priority_score": 0.82,
+      "reason_codes": [
+        "RATE_ABOVE_RECENT_BASELINE",
+        "RECENT_UPWARD_TREND"
+      ],
+      "evidence_summary": {
+        "recent_rate": 4.1,
+        "baseline_rate": 3.0,
+        "change_pct": 36.7,
+        "unit": "events_per_100km"
+      },
+      "quality_status": "valid"
+    },
+    "message": {
+      "target_metric": "decelerate",
+      "title": "今天把減速做得更平順",
+      "explanation": "近期急減速頻率高於這台車的近期行為基線，今天優先保留更充裕的反應距離。",
+      "action": "提早觀察前方車流，鬆開油門後再平順踩下煞車。"
+    },
+    "display": {
+      "target_label": "減少急減速",
+      "rate_unit_label": "每 100 公里事件次數 · Synthetic"
+    },
+    "briefing": {
+      "last_trip_score": 96,
+      "last_trip_grade": "A",
+      "recent_days": 7,
+      "recent_average_score": 90,
+      "recent_scored_trip_count": 6,
+      "previous_average_score": 82,
+      "trend": "improving",
+      "trend_label": "進步中",
+      "weakest_category_label": "平順駕駛",
+      "weakest_category_score": 66,
+      "reminders": [
+        {
+          "priority": "high",
+          "message": "近 7 天平均分數比前一週下降 5 分，今天放慢節奏、預留更多反應時間。"
+        },
+        {
+          "priority": "high",
+          "message": "近 7 天有 1 次使用手機事件，行駛中請把手機放在固定架並開啟勿擾。"
+        },
+        {
+          "priority": "normal",
+          "message": "近 7 天「平順駕駛」平均 66 分，是目前最需要加強的分項：提早鬆油門、平順煞車與起步。"
+        }
+      ]
+    },
+    "last_goal_check": {
+      "target_metric": "decelerate",
+      "target_label": "急減速",
+      "goal_value": 30.4,
+      "trip_value": 15.6,
+      "unit_label": "次／100 km",
+      "direction": "higher_is_worse",
+      "status": "achieved",
+      "streak": 3
+    }
+  },
+  "reports": [
+    {
+      "ref": 5,
+      "date": "2025-03-11",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 37.4,
+        "duration_minutes": 63,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 78,
+        "grade": "C",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 90
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 90
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 88
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 71
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "急減速",
+            "category_label": "平順駕駛",
+            "observed_value": 50.4,
+            "unit_label": "次／100 km",
+            "points_lost": 8.8,
+            "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 15.7,
+        "trip_value": 12.9,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 1
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 3,
+        "event_followed_count": 2,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 9.5,
+            "risk_pct": 52,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          },
+          {
+            "trip_minute": 37.2,
+            "risk_pct": 62,
+            "event_label": "分心",
+            "lead_seconds": 10,
+            "escalation": false
+          },
+          {
+            "trip_minute": 45.2,
+            "risk_pct": 57,
+            "event_label": "車道偏移警示",
+            "lead_seconds": 37,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 79,
+        "adjusted_grade": "C",
+        "city_share_pct": 68,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 0.5,
+            "typical": 0.6,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 2.6,
+            "typical": 4.9,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 2.0,
+            "typical": 4.7,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 1.3,
+            "typical": 1.9,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 6,
+      "date": "2025-03-13",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 19.5,
+        "duration_minutes": 34,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 79,
+        "grade": "C",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 75
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 80
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 84
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 75
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "引擎過載",
+            "category_label": "車輛負荷",
+            "observed_value": 47.8,
+            "unit_label": "次／100 km",
+            "points_lost": 8.4,
+            "definition": "引擎負載 > 83% 持續 5 秒"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 38.6,
+        "trip_value": 38.0,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 2
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 3,
+        "event_followed_count": 2,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 10.4,
+            "risk_pct": 67,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          },
+          {
+            "trip_minute": 26.8,
+            "risk_pct": 56,
+            "event_label": "分心",
+            "lead_seconds": 16,
+            "escalation": false
+          },
+          {
+            "trip_minute": 46.2,
+            "risk_pct": 65,
+            "event_label": "分心",
+            "lead_seconds": 14,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 83,
+        "adjusted_grade": "C",
+        "city_share_pct": 12,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.7,
+            "typical": 1.1,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 1.1,
+            "typical": 3.1,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 2.2,
+            "typical": 6.4,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 4.9,
+            "typical": 3.4,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 7,
+      "date": "2025-03-16",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 50.4,
+        "duration_minutes": 99,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 83,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 78
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 93
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 93
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 95
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "急減速",
+            "category_label": "平順駕駛",
+            "observed_value": 23.2,
+            "unit_label": "次／100 km",
+            "points_lost": 6.8,
+            "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 37.5,
+        "trip_value": 18.8,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 3
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 1,
+        "event_followed_count": 0,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 44.8,
+            "risk_pct": 69,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 87,
+        "adjusted_grade": "B",
+        "city_share_pct": 68,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 0.9,
+            "typical": 0.6,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 7.1,
+            "typical": 3.4,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 2.9,
+            "typical": 6.5,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 3.3,
+            "typical": 3.9,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 8,
+      "date": "2025-03-17",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 11.3,
+        "duration_minutes": 19,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 87,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 98
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 85
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 94
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 96
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "急減速",
+            "category_label": "平順駕駛",
+            "observed_value": 39.9,
+            "unit_label": "次／100 km",
+            "points_lost": 5.2,
+            "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 26.7,
+        "trip_value": 16.6,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 4
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 1,
+        "event_followed_count": 1,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 41.0,
+            "risk_pct": 64,
+            "event_label": "分心",
+            "lead_seconds": 29,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 89,
+        "adjusted_grade": "B",
+        "city_share_pct": 35,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.3,
+            "typical": 1.2,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 3.4,
+            "typical": 4.4,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 6.1,
+            "typical": 3.3,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 2.7,
+            "typical": 2.8,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 9,
+      "date": "2025-03-19",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 56.0,
+        "duration_minutes": 95,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 87,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 88
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 86
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 84
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 86
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "超速",
+            "category_label": "速度控制",
+            "observed_value": 15.7,
+            "unit_label": "次／100 km",
+            "points_lost": 5.2,
+            "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 28.6,
+        "trip_value": 26.2,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 5
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 0,
+        "event_followed_count": 0,
+        "in_dataset": true,
+        "alerts": []
+      },
+      "road_context": {
+        "adjusted_score": 88,
+        "adjusted_grade": "B",
+        "city_share_pct": 35,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.4,
+            "typical": 0.9,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 2.2,
+            "typical": 2.8,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 5.2,
+            "typical": 3.3,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 2.8,
+            "typical": 2.8,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 10,
+      "date": "2025-03-21",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 53.5,
+        "duration_minutes": 94,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 89,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 95
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 90
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 100
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 83
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "引擎過載",
+            "category_label": "車輛負荷",
+            "observed_value": 18.3,
+            "unit_label": "次／100 km",
+            "points_lost": 4.4,
+            "definition": "引擎負載 > 83% 持續 5 秒"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 15.3,
+        "trip_value": 9.1,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 6
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 3,
+        "event_followed_count": 2,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 42.8,
+            "risk_pct": 60,
+            "event_label": "急減速",
+            "lead_seconds": 32,
+            "escalation": false
+          },
+          {
+            "trip_minute": 45.1,
+            "risk_pct": 64,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          },
+          {
+            "trip_minute": 48.3,
+            "risk_pct": 52,
+            "event_label": "急減速",
+            "lead_seconds": 15,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 93,
+        "adjusted_grade": "B",
+        "city_share_pct": 12,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.2,
+            "typical": 1.1,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 5.0,
+            "typical": 5.5,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 6.6,
+            "typical": 2.7,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 2.6,
+            "typical": 2.9,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 11,
+      "date": "2025-03-23",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 25.8,
+        "duration_minutes": 39,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 86,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 91
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 79
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 80
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 95
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "超速",
+            "category_label": "速度控制",
+            "observed_value": 50.1,
+            "unit_label": "次／100 km",
+            "points_lost": 5.6,
+            "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 22.0,
+        "trip_value": 26.9,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "missed",
+        "streak": 0
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 2,
+        "event_followed_count": 2,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 9.3,
+            "risk_pct": 53,
+            "event_label": "分心",
+            "lead_seconds": 13,
+            "escalation": false
+          },
+          {
+            "trip_minute": 28.3,
+            "risk_pct": 64,
+            "event_label": "車道偏移警示",
+            "lead_seconds": 39,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 90,
+        "adjusted_grade": "B",
+        "city_share_pct": 35,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 0.0,
+            "typical": 0.9,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 7.1,
+            "typical": 2.9,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 5.0,
+            "typical": 5.5,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 2.7,
+            "typical": 1.8,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 12,
+      "date": "2025-03-25",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 26.2,
+        "duration_minutes": 45,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 89,
+        "grade": "B",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 99
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 95
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 83
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 83
+          }
+        ],
+        "top_deductions": [
+          {
+            "label": "超速",
+            "category_label": "速度控制",
+            "observed_value": 76.1,
+            "unit_label": "次／100 km",
+            "points_lost": 4.4,
+            "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+          }
+        ],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 34.1,
+        "trip_value": 18.5,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 1
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 0,
+        "event_followed_count": 0,
+        "in_dataset": true,
+        "alerts": []
+      },
+      "road_context": {
+        "adjusted_score": 93,
+        "adjusted_grade": "B",
+        "city_share_pct": 68,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.7,
+            "typical": 1.4,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 6.6,
+            "typical": 2.8,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 7.8,
+            "typical": 3.9,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 4.3,
+            "typical": 1.4,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 13,
+      "date": "2025-03-27",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 11.4,
+        "duration_minutes": 20,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 95,
+        "grade": "A",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 96
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 100
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 100
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 100
+          }
+        ],
+        "top_deductions": [],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 34.9,
+        "trip_value": 18.3,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 2
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 3,
+        "event_followed_count": 1,
+        "in_dataset": true,
+        "alerts": [
+          {
+            "trip_minute": 5.5,
+            "risk_pct": 87,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          },
+          {
+            "trip_minute": 35.9,
+            "risk_pct": 61,
+            "event_label": "急減速",
+            "lead_seconds": 13,
+            "escalation": false
+          },
+          {
+            "trip_minute": 38.0,
+            "risk_pct": 88,
+            "event_label": null,
+            "lead_seconds": null,
+            "escalation": false
+          }
+        ]
+      },
+      "road_context": {
+        "adjusted_score": 96,
+        "adjusted_grade": "A",
+        "city_share_pct": 68,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.0,
+            "typical": 1.4,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 1.3,
+            "typical": 4.8,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 1.3,
+            "typical": 4.9,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 3.4,
+            "typical": 1.5,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    },
+    {
+      "ref": 14,
+      "date": "2025-03-29",
+      "plate": "SIM-5001",
+      "contract_version": "synthetic-postdrive-v1",
+      "view": "postdrive",
+      "data_classification": "synthetic",
+      "prototype_marker": "SYNTHETIC_DEMO",
+      "trip_summary": {
+        "distance_km": 54.1,
+        "duration_minutes": 101,
+        "fuel_used_l": 8.6,
+        "fuel_efficiency_km_per_l": 5.0,
+        "event_metrics": [
+          {
+            "event_name": "decelerate",
+            "label": "急減速",
+            "count": 2
+          },
+          {
+            "event_name": "speeding",
+            "label": "超速事件",
+            "count": 1
+          },
+          {
+            "event_name": "ldws",
+            "label": "車道偏移警示",
+            "count": 0
+          }
+        ],
+        "strongest_behavior_label": "車道維持",
+        "weakest_behavior_label": "減速平順度",
+        "notable_event": {
+          "event_name": "decelerate",
+          "event_label": "一次急減速",
+          "trip_progress_pct": 68,
+          "previous_speed_mean_kph": 56,
+          "next_behavior": "speed_decreased",
+          "next_behavior_label": "平順降速"
+        },
+        "quality_warnings": []
+      },
+      "safety_score": {
+        "status": "scored",
+        "overall_score": 96,
+        "grade": "A",
+        "categories": [
+          {
+            "category": "c0",
+            "label": "安全警示",
+            "score": 99
+          },
+          {
+            "category": "c1",
+            "label": "平順駕駛",
+            "score": 88
+          },
+          {
+            "category": "c2",
+            "label": "速度控制",
+            "score": 100
+          },
+          {
+            "category": "c3",
+            "label": "車輛負荷",
+            "score": 99
+          }
+        ],
+        "top_deductions": [],
+        "applied_caps": [],
+        "dms_reliability": "ok"
+      },
+      "next_goal": {
+        "target_metric": "decelerate",
+        "priority_score": 0.78
+      },
+      "ai_report": {
+        "summary": "這趟合成行程大部分時間保持穩定，主要改善機會集中在兩次較明顯的減速。下一趟可提早觀察前方節奏，讓煞車操作更連續。",
+        "strengths": [
+          "車道維持穩定"
+        ],
+        "weaknesses": [
+          "減速平順度"
+        ],
+        "primary_risk": "decelerate",
+        "recommendations": [
+          "增加反應距離"
+        ],
+        "next_trip_focus": "提早鬆開油門，避免在接近前車時集中減速。"
+      },
+      "generation_mode": "synthetic",
+      "goal_check": {
+        "target_metric": "decelerate",
+        "target_label": "急減速",
+        "goal_value": 30.4,
+        "trip_value": 15.6,
+        "unit_label": "次／100 km",
+        "direction": "higher_is_worse",
+        "status": "achieved",
+        "streak": 3
+      },
+      "alert_review": {
+        "available": true,
+        "split_label": "Synthetic",
+        "alert_count": 0,
+        "event_followed_count": 0,
+        "in_dataset": true,
+        "alerts": []
+      },
+      "road_context": {
+        "adjusted_score": 97,
+        "adjusted_grade": "A",
+        "city_share_pct": 12,
+        "items": [
+          {
+            "label": "急加速",
+            "you": 1.6,
+            "typical": 1.1,
+            "unit": "次"
+          },
+          {
+            "label": "急減速",
+            "you": 7.3,
+            "typical": 2.7,
+            "unit": "次"
+          },
+          {
+            "label": "怠速",
+            "you": 4.4,
+            "typical": 5.0,
+            "unit": "分鐘"
+          },
+          {
+            "label": "超速時間",
+            "you": 4.8,
+            "typical": 3.1,
+            "unit": "分鐘"
+          }
+        ]
+      }
+    }
+  ]
+}

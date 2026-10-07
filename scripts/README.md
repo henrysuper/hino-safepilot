@@ -29,6 +29,7 @@ Safety Score V1 and pre-drive briefing (see `docs/safety_score_v1.md`):
 python -m hino_safepilot.analytics score
 python -m hino_safepilot.analytics predrive --trip-id <local-trip-id>
 python -m hino_safepilot.analytics postdrive --trip-id <local-trip-id>
+python -m hino_safepilot.analytics drivers
 python -m hino_safepilot.analytics export-demo
 python scripts/serve_demo.py
 ```

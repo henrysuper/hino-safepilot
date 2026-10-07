@@ -16,7 +16,7 @@ Opening `index.html` directly is not supported because browsers normally block `
 
 ## Local private mode
 
-After `python -m hino_safepilot.analytics score` and `python -m hino_safepilot.analytics export-demo`, open `http://127.0.0.1:8000/?source=local`. The pre-drive and post-drive views then read `data/processed/demo_views/*.local.json` (Git-ignored) through the `/local-data/` route of `scripts/serve_demo.py`; the driving view stays synthetic. A banner marks the page as private local data. Local contracts use `prototype_marker: LOCAL_PRIVATE_DERIVED` and `data_classification: private_local`, and are rejected in synthetic mode (and vice versa).
+After `python -m hino_safepilot.analytics score`, `python -m hino_safepilot.analytics drivers` and `python -m hino_safepilot.analytics export-demo`, open `http://127.0.0.1:8000/?source=local`. The page loads `drivers.local.json` (the simulated-driver index) and, for the driver chosen in the top selector, `driver-Dxx.local.json` (next-trip briefing plus full reports for the latest scored trips). Pre-drive, post-drive and history all follow that driver. Files live in `data/processed/demo_views/` (Git-ignored) and are served through the `/local-data/` route of `scripts/serve_demo.py`; the driving view stays synthetic. If the local driver files are missing, the whole page falls back to the synthetic driver samples and says so. A banner marks the page as private local data. Local contracts use `prototype_marker: LOCAL_PRIVATE_DERIVED` and `data_classification: private_local`, and are rejected in synthetic mode (and vice versa).
 
 ## Data boundary
 

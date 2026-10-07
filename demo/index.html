@@ -32,7 +32,18 @@
         <button class="stage-button" data-view="postdrive" aria-selected="false">
           <span class="stage-number">03</span><span>行後安全報告</span>
         </button>
+        <button class="stage-button" data-view="drivers" aria-selected="false">
+          <span class="stage-number">04</span><span>安全歷史紀錄</span>
+        </button>
       </nav>
+
+      <div class="driver-bar">
+        <label for="driver-select">虛擬駕駛</label>
+        <select id="driver-select"></select>
+        <span id="driver-meta" class="driver-meta">—</span>
+        <span class="microcopy">切換後，行前提醒、行後報告與安全歷史紀錄都會換成這位駕駛的資料。</span>
+      </div>
+      <p id="drivers-mock-note" class="mock-note">—</p>
 
       <main>
         <div id="global-error" class="error-panel hidden" role="alert">
@@ -46,7 +57,7 @@
 
         <section id="predrive-view" class="view active" aria-labelledby="predrive-title">
           <div class="view-heading">
-            <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">安全提醒</h2></div>
+            <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">安全提醒</h2><p id="predrive-for" class="view-subtitle">—</p></div>
             <span class="contract-chip">Deterministic Score &amp; Goal</span>
           </div>
           <article class="goal-card accent-card today-goal">
@@ -54,6 +65,7 @@
             <div class="goal-title-row"><span id="goal-icon" class="metric-icon">↓</span><h3 id="goal-title">—</h3></div>
             <p id="goal-message" class="lead-copy">資料載入中…</p>
             <div class="goal-how"><span>怎麼做</span><p id="goal-action">—</p></div>
+            <p id="last-goal" class="last-goal hidden">—</p>
           </article>
           <div class="briefing-grid">
             <article class="metric-panel reminder-panel">
@@ -113,9 +125,25 @@
 
         <section id="postdrive-view" class="view" aria-labelledby="postdrive-title">
           <div class="view-heading">
-            <div><p class="eyebrow">After the trip</p><h2 id="postdrive-title">把每趟行程變成下一次進步</h2></div>
+            <div><p class="eyebrow">After the trip</p><h2 id="postdrive-title">把每趟行程變成下一次進步</h2><p id="postdrive-for" class="view-subtitle">—</p></div>
             <span class="contract-chip">Post-trip Analytics</span>
           </div>
+          <div class="driver-toolbar">
+            <label for="report-select">選擇行程</label>
+            <select id="report-select"></select>
+            <span id="report-meta" class="microcopy">—</span>
+          </div>
+          <article id="goal-check" class="goal-check hidden">
+            <div>
+              <p class="card-label">這趟的目標達成了嗎？</p>
+              <h3 id="goal-check-title">—</h3>
+              <p id="goal-check-detail" class="microcopy">—</p>
+            </div>
+            <div class="goal-check-side">
+              <span id="goal-check-badge" class="goal-badge">—</span>
+              <strong id="goal-check-streak">—</strong>
+            </div>
+          </article>
           <div class="score-grid">
             <article class="score-card accent-card">
               <p class="card-label">本趟安全分數</p>
@@ -130,6 +158,18 @@
               <p id="score-caps" class="microcopy"></p>
             </article>
           </div>
+          <article id="road-context" class="metric-panel road-context hidden">
+            <p class="card-label">路況公平比較 · 同樣路段、同樣時段的一般駕駛</p>
+            <h3 id="road-summary">—</h3>
+            <div id="road-items" class="road-items"></div>
+            <p class="microcopy">「一般」來自油耗組的路段行為地圖（道路類型 × 時段 × 500 公尺網格）。路況調整後分數只調整急加速、急減速、超速、怠速四項，其餘項目不變。</p>
+          </article>
+          <article id="alert-review" class="metric-panel alert-review hidden">
+            <p class="card-label">60 秒預警回放 · 如果當時有 SafePilot</p>
+            <h3 id="alert-summary">—</h3>
+            <ol id="alert-list" class="alert-list"></ol>
+            <p id="alert-note" class="microcopy">—</p>
+          </article>
           <div id="trip-metrics" class="metric-cards"></div>
           <div class="report-grid">
             <article class="event-card">
@@ -148,6 +188,42 @@
           </div>
           <article class="context-card"><p class="card-label">值得留意的事件脈絡</p><div id="event-context">—</div></article>
           <p class="microcopy score-disclaimer">安全分數由固定公式計算（safety-score-v1），權重與參考值為 prototype 設定，尚未經 HINO／domain expert 驗證；AI 只負責文字說明，不參與評分。</p>
+        </section>
+
+        <section id="drivers-view" class="view" aria-labelledby="drivers-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">Driver history</p><h2 id="drivers-title">安全歷史紀錄</h2></div>
+            <span class="contract-chip warning">模擬駕駛名單</span>
+          </div>
+          <div class="driver-stats">
+            <article class="trip-metric"><span>平均安全分數</span><strong id="drv-average">—</strong><em id="drv-rank" class="rank-note">—</em><em id="drv-road" class="rank-note">—</em></article>
+            <article class="trip-metric"><span id="drv-recent-label">最近 10 趟平均</span><strong id="drv-recent">—</strong><em id="drv-trend" class="trend-chip">—</em></article>
+            <article class="trip-metric"><span>全部行程／總里程</span><strong id="drv-trips">—</strong></article>
+            <article class="trip-metric"><span>鏡頭遮蔽行程</span><strong id="drv-camera">—</strong></article>
+          </div>
+          <div class="report-grid">
+            <article class="metric-panel">
+              <p class="card-label">每趟安全分數走勢</p>
+              <div id="drv-chart" class="score-chart" role="img" aria-label="每趟安全分數走勢"></div>
+              <p class="microcopy">虛線為等級門檻（A 90、B 80、C 70、D 60）；滑鼠移到點上可看該趟分數。</p>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">分項平均</p>
+              <div id="drv-categories" class="category-bars"></div>
+              <p class="card-label deduction-label">最常被扣分的項目</p>
+              <ul id="drv-deductions" class="deduction-list"></ul>
+            </article>
+          </div>
+          <article class="metric-panel trip-history">
+            <p class="card-label">行程紀錄（最新在上，點選可看扣分明細）</p>
+            <div class="table-scroll">
+              <table class="history-table">
+                <thead><tr><th>第幾趟</th><th>日期</th><th>車牌（模擬）</th><th>里程</th><th>分數</th><th>等級</th><th>目標</th><th>主要扣分</th></tr></thead>
+                <tbody id="drv-trip-rows"></tbody>
+              </table>
+            </div>
+            <div id="drv-trip-detail" class="trip-detail hidden"></div>
+          </article>
         </section>
       </main>
 

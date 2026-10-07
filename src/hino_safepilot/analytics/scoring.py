@@ -130,7 +130,12 @@ class SafetyScorer:
         self.config = config
         self.decay = float(config.raw["reference_score"]) / 100
 
-    def score_trip(self, summary: TripSummary) -> TripSafetyScore:
+    def score_trip(
+        self, summary: TripSummary, adjustments: dict[str, float] | None = None
+    ) -> TripSafetyScore:
+        """Score one trip. ``adjustments`` divides an item's observed value (road context)."""
+
+        adjustments = adjustments or {}
         counts = {event.event_name: event.count for event in summary.events}
         distance = summary.basics.distance_km.value
         camera_blocked = any(
@@ -180,6 +185,7 @@ class SafetyScorer:
                 if observed is None:
                     warnings.append(f"{item_name.upper()}_UNAVAILABLE_FOR_SCORE")
                     continue
+                observed = observed / adjustments.get(item_name, 1.0)
                 ratio = observed / float(item["reference"])
                 terms.append((item_name, float(item["weight"]) * ratio, observed, unit))
             if not terms:

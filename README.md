@@ -238,13 +238,14 @@ python scripts/serve_demo.py
 
 ```text
 http://127.0.0.1:8000                 # Synthetic Data
-http://127.0.0.1:8000/?source=local   # 本機 HINO 分析結果（需先 score + export-demo）
+http://127.0.0.1:8000/?source=local   # 本機 HINO 分析結果（需先 score + drivers + export-demo）
 ```
 
 本機模式的資料流程：
 
 ```powershell
 python -m hino_safepilot.analytics score
+python -m hino_safepilot.analytics drivers        # 需要油耗組的虛擬駕駛檔案
 python -m hino_safepilot.analytics export-demo
 ```
 

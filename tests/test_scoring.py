@@ -343,3 +343,33 @@ def test_demo_server_only_maps_local_view_files() -> None:
 def test_score_output_must_stay_below_processed(tmp_path) -> None:
     with pytest.raises(ValueError, match="data/processed"):
         resolve_score_config(tmp_path, output_root=Path("reports/scores"))
+
+
+def test_road_factors_are_relative_to_fleet_and_clipped() -> None:
+    from hino_safepilot.analytics.road_context import road_factors
+
+    context = {
+        "typical_rates": {
+            "harsh_brake_per_km": 0.6,  # 2x the fleet: city-heavy trip
+            "harsh_acc_per_km": 0.01,  # far below the fleet: clipped to 0.5
+            "idle_min_per_km": None,  # unknown: not adjusted
+            "overspeed_share": 0.2,
+        }
+    }
+    fleet = {"harsh_brake_per_km": 0.3, "harsh_acc_per_km": 0.05, "idle_min_per_km": 0.3, "overspeed_share": 0.2}
+    factors = road_factors(context, fleet)
+    assert factors["decelerate"] == pytest.approx(2.0)
+    assert factors["accelerate"] == pytest.approx(0.5)
+    assert factors["speeding"] == pytest.approx(1.0)
+    assert "idle" not in factors
+
+
+def test_road_adjustment_only_rescales_the_adjusted_items(scorer) -> None:
+    summary = summary_for(decelerate=12, phone=1)
+    plain = scorer.score_trip(summary)
+    adjusted = scorer.score_trip(summary, {"decelerate": 2.0})
+    smooth = lambda s: next(c.score for c in s.categories if c.category == "smooth_driving")
+    alerts = lambda s: next(c.score for c in s.categories if c.category == "safety_alerts")
+    assert smooth(adjusted) > smooth(plain)  # half the braking rate after a 2x road factor
+    assert alerts(adjusted) == pytest.approx(alerts(plain))  # DMS items untouched
+    assert scorer.score_trip(summary, {}).overall_score == pytest.approx(plain.overall_score)

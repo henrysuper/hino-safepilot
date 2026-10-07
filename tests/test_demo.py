@@ -42,7 +42,7 @@ def test_demo_has_all_static_resources() -> None:
 
 
 def test_demo_sample_payloads_are_valid_and_synthetic() -> None:
-    expected = {"predrive", "driving", "postdrive"}
+    expected = {"driving", "drivers", "driver"}
     observed: set[str] = set()
 
     for path in sorted(SAMPLES.glob("*.synthetic.json")):

@@ -1,0 +1,1125 @@
+{
+  "contract_version": "synthetic-drivers-v1",
+  "view": "drivers",
+  "data_classification": "synthetic",
+  "prototype_marker": "SYNTHETIC_DEMO",
+  "mock_note": "Synthetic Demo：駕駛、車牌、日期與分數皆為示意用的合成資料。真實模式中，駕駛名單與行程分配為模擬，駕駛之間的差異（含排名）有一部分是分配規則造成的，只用來展示流程。",
+  "drivers": [
+    {
+      "driver_id": "D01",
+      "driver_name": "模擬駕駛 01",
+      "primary_type": 500,
+      "new_driver": false,
+      "trip_count": 14,
+      "scored_trip_count": 14,
+      "total_distance_km": 427,
+      "average_score": 86,
+      "grade_counts": {
+        "A": 2,
+        "B": 10,
+        "C": 2
+      },
+      "category_averages": {
+        "安全警示": 81,
+        "平順駕駛": 79,
+        "速度控制": 91,
+        "車輛負荷": 77
+      },
+      "frequent_deductions": [
+        {
+          "item": "decelerate",
+          "label": "急減速",
+          "trips": 5,
+          "points_lost": 21.4
+        },
+        {
+          "item": "speeding",
+          "label": "超速",
+          "trips": 3,
+          "points_lost": 12.8
+        }
+      ],
+      "recent_average_score": 90,
+      "previous_average_score": 82,
+      "trend": "improving",
+      "trend_label": "進步中",
+      "camera_blocked_trip_count": 0,
+      "monthly_average_scores": [],
+      "trips": [
+        {
+          "ref": 1,
+          "date": "2025-03-05",
+          "plate": "SIM-5001",
+          "distance_km": 28.5,
+          "score": 83,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": null,
+          "goal_status": "no_goal"
+        },
+        {
+          "ref": 2,
+          "date": "2025-03-06",
+          "plate": "SIM-5001",
+          "distance_km": 12.9,
+          "score": 83,
+          "grade": "B",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": null,
+          "goal_status": "missed"
+        },
+        {
+          "ref": 3,
+          "date": "2025-03-07",
+          "plate": "SIM-5001",
+          "distance_km": 19.2,
+          "score": 85,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": null,
+          "goal_status": "missed"
+        },
+        {
+          "ref": 4,
+          "date": "2025-03-09",
+          "plate": "SIM-5001",
+          "distance_km": 20.5,
+          "score": 81,
+          "grade": "B",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": null,
+          "goal_status": "missed"
+        },
+        {
+          "ref": 5,
+          "date": "2025-03-11",
+          "plate": "SIM-5001",
+          "distance_km": 37.4,
+          "score": 78,
+          "grade": "C",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 78,
+            "grade": "C",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 90
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 90
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 88
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 71
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 50.4,
+                "unit_label": "次／100 km",
+                "points_lost": 8.8,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 6,
+          "date": "2025-03-13",
+          "plate": "SIM-5001",
+          "distance_km": 19.5,
+          "score": 79,
+          "grade": "C",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 79,
+            "grade": "C",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 75
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 80
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 84
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 75
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "引擎過載",
+                "category_label": "車輛負荷",
+                "observed_value": 47.8,
+                "unit_label": "次／100 km",
+                "points_lost": 8.4,
+                "definition": "引擎負載 > 83% 持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 7,
+          "date": "2025-03-16",
+          "plate": "SIM-5001",
+          "distance_km": 50.4,
+          "score": 83,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 83,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 78
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 93
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 93
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 95
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 23.2,
+                "unit_label": "次／100 km",
+                "points_lost": 6.8,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 8,
+          "date": "2025-03-17",
+          "plate": "SIM-5001",
+          "distance_km": 11.3,
+          "score": 87,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 87,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 98
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 85
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 94
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 96
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 39.9,
+                "unit_label": "次／100 km",
+                "points_lost": 5.2,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 9,
+          "date": "2025-03-19",
+          "plate": "SIM-5001",
+          "distance_km": 56.0,
+          "score": 87,
+          "grade": "B",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 87,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 88
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 86
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 84
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 86
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 15.7,
+                "unit_label": "次／100 km",
+                "points_lost": 5.2,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 10,
+          "date": "2025-03-21",
+          "plate": "SIM-5001",
+          "distance_km": 53.5,
+          "score": 89,
+          "grade": "B",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 89,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 95
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 90
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 100
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 83
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "引擎過載",
+                "category_label": "車輛負荷",
+                "observed_value": 18.3,
+                "unit_label": "次／100 km",
+                "points_lost": 4.4,
+                "definition": "引擎負載 > 83% 持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 11,
+          "date": "2025-03-23",
+          "plate": "SIM-5001",
+          "distance_km": 25.8,
+          "score": 86,
+          "grade": "B",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 86,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 91
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 79
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 80
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 95
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 50.1,
+                "unit_label": "次／100 km",
+                "points_lost": 5.6,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 12,
+          "date": "2025-03-25",
+          "plate": "SIM-5001",
+          "distance_km": 26.2,
+          "score": 89,
+          "grade": "B",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 89,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 99
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 95
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 83
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 83
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 76.1,
+                "unit_label": "次／100 km",
+                "points_lost": 4.4,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 13,
+          "date": "2025-03-27",
+          "plate": "SIM-5001",
+          "distance_km": 11.4,
+          "score": 95,
+          "grade": "A",
+          "top_deduction": null,
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 95,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 96
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 100
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 100
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 100
+              }
+            ],
+            "top_deductions": [],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 14,
+          "date": "2025-03-29",
+          "plate": "SIM-5001",
+          "distance_km": 54.1,
+          "score": 96,
+          "grade": "A",
+          "top_deduction": null,
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 96,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 99
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 88
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 100
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 99
+              }
+            ],
+            "top_deductions": [],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        }
+      ],
+      "recent_trips": 10,
+      "series_rank": 3,
+      "series_ranked_size": 10,
+      "road_adjusted_average": 88,
+      "road_adjusted_trip_count": 12
+    },
+    {
+      "driver_id": "D02",
+      "driver_name": "模擬駕駛 02",
+      "primary_type": 500,
+      "new_driver": true,
+      "trip_count": 10,
+      "scored_trip_count": 10,
+      "total_distance_km": 323,
+      "average_score": 88,
+      "grade_counts": {
+        "A": 4,
+        "B": 6
+      },
+      "category_averages": {
+        "安全警示": 83,
+        "平順駕駛": 94,
+        "速度控制": 78,
+        "車輛負荷": 84
+      },
+      "frequent_deductions": [
+        {
+          "item": "decelerate",
+          "label": "急減速",
+          "trips": 5,
+          "points_lost": 21.4
+        },
+        {
+          "item": "speeding",
+          "label": "超速",
+          "trips": 3,
+          "points_lost": 12.8
+        }
+      ],
+      "recent_average_score": 86,
+      "previous_average_score": 90,
+      "trend": "declining",
+      "trend_label": "退步中",
+      "camera_blocked_trip_count": 0,
+      "monthly_average_scores": [],
+      "trips": [
+        {
+          "ref": 1,
+          "date": "2025-03-04",
+          "plate": "SIM-5002",
+          "distance_km": 14.7,
+          "score": 94,
+          "grade": "A",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 94,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 98
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 98
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 100
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 88
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 21.6,
+                "unit_label": "次／100 km",
+                "points_lost": 2.4,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "no_goal"
+        },
+        {
+          "ref": 2,
+          "date": "2025-03-06",
+          "plate": "SIM-5002",
+          "distance_km": 53.9,
+          "score": 91,
+          "grade": "A",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 91,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 100
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 91
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 96
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 94
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 57.8,
+                "unit_label": "次／100 km",
+                "points_lost": 3.6,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 3,
+          "date": "2025-03-08",
+          "plate": "SIM-5002",
+          "distance_km": 15.8,
+          "score": 95,
+          "grade": "A",
+          "top_deduction": null,
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 95,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 92
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 91
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 94
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 94
+              }
+            ],
+            "top_deductions": [],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 4,
+          "date": "2025-03-09",
+          "plate": "SIM-5002",
+          "distance_km": 38.6,
+          "score": 88,
+          "grade": "B",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 88,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 89
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 80
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 84
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 93
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 47.4,
+                "unit_label": "次／100 km",
+                "points_lost": 4.8,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 5,
+          "date": "2025-03-12",
+          "plate": "SIM-5002",
+          "distance_km": 57.6,
+          "score": 89,
+          "grade": "B",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 89,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 97
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 100
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 100
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 82
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "引擎過載",
+                "category_label": "車輛負荷",
+                "observed_value": 42.0,
+                "unit_label": "次／100 km",
+                "points_lost": 4.4,
+                "definition": "引擎負載 > 83% 持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 6,
+          "date": "2025-03-15",
+          "plate": "SIM-5002",
+          "distance_km": 28.4,
+          "score": 91,
+          "grade": "A",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 91,
+            "grade": "A",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 95
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 86
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 98
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 100
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 38.0,
+                "unit_label": "次／100 km",
+                "points_lost": 3.6,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 7,
+          "date": "2025-03-16",
+          "plate": "SIM-5002",
+          "distance_km": 18.9,
+          "score": 81,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 81,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 76
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 83
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 92
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 74
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 17.2,
+                "unit_label": "次／100 km",
+                "points_lost": 7.6,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 8,
+          "date": "2025-03-19",
+          "plate": "SIM-5002",
+          "distance_km": 13.3,
+          "score": 81,
+          "grade": "B",
+          "top_deduction": "超速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 81,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 92
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 73
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 75
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 79
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "超速",
+                "category_label": "速度控制",
+                "observed_value": 53.0,
+                "unit_label": "次／100 km",
+                "points_lost": 7.6,
+                "definition": "車速 ≥ 路段限速 +10 km/h，或 ≥ 107 km/h，持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "missed"
+        },
+        {
+          "ref": 9,
+          "date": "2025-03-20",
+          "plate": "SIM-5002",
+          "distance_km": 57.7,
+          "score": 86,
+          "grade": "B",
+          "top_deduction": "引擎過載",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 86,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 89
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 93
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 81
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 81
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "引擎過載",
+                "category_label": "車輛負荷",
+                "observed_value": 69.4,
+                "unit_label": "次／100 km",
+                "points_lost": 5.6,
+                "definition": "引擎負載 > 83% 持續 5 秒"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        },
+        {
+          "ref": 10,
+          "date": "2025-03-22",
+          "plate": "SIM-5002",
+          "distance_km": 24.2,
+          "score": 84,
+          "grade": "B",
+          "top_deduction": "急減速",
+          "camera_blocked": false,
+          "detail": {
+            "status": "scored",
+            "overall_score": 84,
+            "grade": "B",
+            "categories": [
+              {
+                "category": "c0",
+                "label": "安全警示",
+                "score": 79
+              },
+              {
+                "category": "c1",
+                "label": "平順駕駛",
+                "score": 86
+              },
+              {
+                "category": "c2",
+                "label": "速度控制",
+                "score": 84
+              },
+              {
+                "category": "c3",
+                "label": "車輛負荷",
+                "score": 91
+              }
+            ],
+            "top_deductions": [
+              {
+                "label": "急減速",
+                "category_label": "平順駕駛",
+                "observed_value": 68.0,
+                "unit_label": "次／100 km",
+                "points_lost": 6.4,
+                "definition": "每秒車速減少 15 km/h 以上，且連續 2 筆資料成立"
+              }
+            ],
+            "applied_caps": [],
+            "dms_reliability": "ok"
+          },
+          "goal_status": "achieved"
+        }
+      ],
+      "recent_trips": 10,
+      "series_rank": null,
+      "series_ranked_size": null,
+      "road_adjusted_average": 90,
+      "road_adjusted_trip_count": 8
+    }
+  ]
+}

@@ -137,6 +137,33 @@ Remove-Item -Recurse -Force data\processed\analytics
 
 成功會印出評分統計，結果寫入 `data\processed\safety_scores\`（Git 忽略）。
 
+### 6.1b 對應虛擬駕駛
+
+需要油耗組的虛擬駕駛檔案（`data/processed/fuel/` 底下的 `driver_assignment.parquet`、`vehicle_aliases.json`、`artifacts/virtual_drivers.json`、`artifacts/mock_plates.json`）。放好後：
+
+```powershell
+.venv\Scripts\python.exe -m hino_safepilot.analytics drivers
+```
+
+這 4 個檔案在團隊雲端硬碟的 `1006` 資料夾（`1006\data\processed\fuel\`）。Demo 的真實資料模式以「虛擬駕駛」為單位，所以 6.2 需要先完成這一步；沒有這些檔案時，Demo 會整頁改用 Synthetic Demo。
+
+### 6.1c 路況比較與 60 秒預警回放（選用）
+
+路況比較需要油耗組的路網與高程資料，從雲端 `1006\data\` 複製：
+
+- `osm\road_index_v2.npz` → `data\osm\`
+- `dem\moi_dem20m\不分幅_全台及澎湖DEM\dem_20m.tif` 與 `dem_20m.tfw` → `data\dem\moi_dem20m\不分幅_全台及澎湖DEM\`
+- `processed\fuel\artifacts\` 整個資料夾 → `data\processed\fuel\artifacts\`
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[fuel]"
+.venv\Scripts\hino-fuel.exe segments --repo-root .
+.venv\Scripts\python.exe -m hino_safepilot.analytics road
+.venv\Scripts\python.exe -m hino_safepilot.analytics alerts
+```
+
+沒做這步也能跑 Demo，只是行後報告不會出現「路況公平比較」與「60 秒預警回放」。
+
 ### 6.2 產生 Demo 資料
 
 ```powershell
