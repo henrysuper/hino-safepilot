@@ -241,6 +241,25 @@ main { padding: 42px 0 54px; }
 .risk-chart .now-label { fill: var(--red-dark); font-size: 11px; font-weight: 800; }
 .timeline-item.pending { border-left-color: var(--amber); background: #fff8eb; }
 .timeline-item.hit { border-left-color: var(--green); background: #eef7f2; }
+.reminder-demo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.reminder-demo .card-label { margin-bottom: 6px; }
+.reminder-demo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.reminder-demo-controls label { color: var(--muted); font-size: .8rem; }
+.reminder-demo-controls select, .reminder-demo-controls button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--charcoal); font: inherit; }
+.reminder-demo-controls button { cursor: pointer; font-weight: 750; }
+.reminder-demo-controls button:disabled { opacity: .5; cursor: wait; }
+.voice-banner strong, .voice-banner span { display: block; }
+.voice-banner span { margin-top: 5px; font-size: .75rem; font-weight: 500; opacity: .9; }
+.voice-banner p { margin: 9px 0 0; line-height: 1.6; }
+.voice-banner.reminder-forward { background: #805600; }
+.voice-banner.reminder-lane { background: #245f89; }
+.voice-banner.reminder-attention { background: #256652; }
+.voice-banner.reminder-fatigue { background: #675181; }
+.reminder-origin { font-size: .76rem; color: var(--muted); }
+.timeline-item.reminder-forward { border-left-color: #805600; }
+.timeline-item.reminder-lane { border-left-color: #245f89; }
+.timeline-item.reminder-attention { border-left-color: #256652; }
+.timeline-item.reminder-fatigue { border-left-color: #675181; }
 .page-notes { display: grid; gap: 10px; margin-top: 36px; }
 .page-notes .local-banner, .page-notes .mock-note { margin: 0; }
 .error-panel { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; padding: 18px 22px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); }

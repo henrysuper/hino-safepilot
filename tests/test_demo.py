@@ -37,12 +37,12 @@ def _walk_keys(value: object) -> set[str]:
 
 
 def test_demo_has_all_static_resources() -> None:
-    for relative in ("index.html", "styles.css", "app.js", "README.md"):
+    for relative in ("index.html", "styles.css", "app.js", "reminders.js", "playback.js", "README.md"):
         assert (DEMO / relative).is_file()
 
 
 def test_demo_sample_payloads_are_valid_and_synthetic() -> None:
-    expected = {"driving", "drivers", "driver"}
+    expected = {"driving", "drivers", "driver", "reminder-scenarios"}
     observed: set[str] = set()
 
     for path in sorted(SAMPLES.glob("*.synthetic.json")):

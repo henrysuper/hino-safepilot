@@ -14,7 +14,7 @@
         <div class="brand-lockup">
           <span class="brand-mark" aria-hidden="true">SP</span>
           <div>
-            <p class="eyebrow">Hackathon Prototype · Local Demo</p>
+            <p class="eyebrow">Hackathon Prototype</p>
             <h1>HINO SafePilot</h1>
             <p class="subtitle">AI 安全駕駛教練 Prototype</p>
           </div>
@@ -88,11 +88,20 @@
             <select id="driving-select"></select>
             <span class="microcopy">只列出有足夠連續資料（過去 5 分鐘）可以做 60 秒預測的行程</span>
           </div>
+          <article class="reminder-demo factor-panel">
+            <div><p class="card-label">分類提醒情境 · Synthetic</p><p class="microcopy">情境風險由 25% 升至 50% 後提醒；四類事件文案與通用提醒皆為展示設計。</p></div>
+            <div class="reminder-demo-controls">
+              <label for="reminder-scenario">提醒類別</label>
+              <select id="reminder-scenario" disabled></select>
+              <button id="load-reminder-scenario" type="button" disabled>載入情境</button>
+              <button id="restore-driving" type="button" class="hidden">回到駕駛行程</button>
+            </div>
+          </article>
           <div id="player" class="player hidden">
             <button id="play-btn" type="button" class="play-btn" aria-label="播放">▶ 開始模擬行駛</button>
             <label for="play-speed" class="microcopy">速度</label>
-            <select id="play-speed"><option value="10">10 倍</option><option value="30" selected>30 倍</option><option value="60">60 倍</option></select>
-            <input id="play-slider" type="range" min="0" max="0" value="0" aria-label="行程時間" />
+            <select id="play-speed"><option value="1">1 倍</option><option value="10">10 倍</option><option value="30" selected>30 倍</option><option value="60">60 倍</option></select>
+            <input id="play-slider" type="range" min="0" max="0" step="1" value="0" aria-label="行程時間" />
             <span id="play-clock" class="play-clock">—</span>
             <label class="voice-toggle"><input id="play-voice" type="checkbox" /> 語音提醒</label>
           </div>
@@ -102,7 +111,9 @@
               <div class="risk-dial" id="risk-dial"><div><strong id="risk-score">—</strong><span id="risk-dial-caption">模擬機率</span></div></div>
               <h3 id="risk-level">—</h3>
               <p id="risk-event">—</p>
-              <p id="voice-banner" class="voice-banner hidden">—</p>
+              <div id="voice-banner" class="voice-banner hidden" role="status" aria-live="polite">
+                <strong id="reminder-title">—</strong><span id="reminder-source">—</span><p id="reminder-text">—</p>
+              </div>
             </article>
             <article class="metric-panel">
               <p class="card-label">Prediction Contract Preview</p>
@@ -254,6 +265,8 @@
 
       <footer><span>SafePilot · 2026 Hackathon Prototype</span><span>Not an official HINO product</span></footer>
     </div>
+    <script src="./reminders.js" defer></script>
+    <script src="./playback.js" defer></script>
     <script src="./app.js" defer></script>
   </body>
 </html>

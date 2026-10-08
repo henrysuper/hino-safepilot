@@ -1,0 +1,18 @@
+{
+  "view": "reminder-scenarios",
+  "prototype_marker": "SYNTHETIC_DEMO",
+  "data_classification": "synthetic",
+  "notice": "手工編排的提醒情境，不代表模型能預測特定事件，也不是即時偵測結果。",
+  "model_info": {
+    "model_version": "Synthetic 提醒情境",
+    "thresholds": { "elevated": 0.35, "high": 0.5, "policy_enter": 0.5, "policy_reset": 0.4 },
+    "top_factors": []
+  },
+  "scenarios": [
+    { "id": "forward", "label": "前方與跟車注意 · PCS", "event_code": "pcs" },
+    { "id": "lane", "label": "車道注意 · LDWS", "event_code": "ldws" },
+    { "id": "attention", "label": "專注提醒 · 分心", "event_code": "distract" },
+    { "id": "fatigue", "label": "疲勞提醒 · 疲勞", "event_code": "fatigue" },
+    { "id": "general", "label": "通用風險 · 未分類模型預測", "event_code": null }
+  ]
+}

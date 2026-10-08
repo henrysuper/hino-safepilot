@@ -25,7 +25,7 @@ class StaticJsonProvider extends DataProvider {
 }
 
 // ?source=local reads private views exported by `hino-analytics export-demo`, served
-// only by scripts/serve_demo.py. The driving view always stays synthetic.
+// only by scripts/serve_demo.py. Driving replays use exported timelines when available.
 // One simulated driver is selected at a time; pre-drive, post-drive and history all follow it.
 const params = new URLSearchParams(window.location.search);
 const useLocalData = params.get("source") === "local";
@@ -170,21 +170,62 @@ function riskLevel(pct, thresholds) {
 // Simulated drive: the trip advances one prediction point (10 s of trip time) at a time and
 // the page only shows what was known at that moment. Outcomes appear once 60 s have passed.
 const SPEAK_TEXT = {
-  1: "前方注意，請放慢車速",
-  2: "風險持續升高，請立即減速",
+  1: SafePilotReminders.categories.general.text,
+  2: SafePilotReminders.categories.general.text,
 };
-const player = { report: null, info: null, index: 0, timer: null };
+const player = { report: null, info: null, index: 0, seconds: 0, timer: null, lastSpokenIndex: -1 };
+
+function reminderSource(notification, timeline) {
+  const prefix = timeline.is_reminder_scenario ? "Synthetic 情境 · " : "";
+  return prefix + (notification.source === "detected_event" ? "已偵測事件" : "模型預測 · 未分類風險");
+}
+
+async function setupReminderScenarios() {
+  const data = await syntheticProvider.load("reminder-scenarios");
+  if (data.prototype_marker !== "SYNTHETIC_DEMO" || data.data_classification !== "synthetic" || data.view !== "reminder-scenarios") {
+    throw new Error("Reminder scenarios must be synthetic");
+  }
+  const select = document.getElementById("reminder-scenario");
+  for (const scenario of data.scenarios) {
+    const option = document.createElement("option");
+    option.value = scenario.id;
+    option.textContent = scenario.label;
+    select.append(option);
+  }
+  select.disabled = false;
+  document.getElementById("load-reminder-scenario").disabled = false;
+  document.getElementById("load-reminder-scenario").addEventListener("click", () => {
+    const scenario = data.scenarios.find((s) => s.id === select.value);
+    const report = {
+      ref: "情境", date: "Synthetic", plate: null,
+      risk_timeline: SafePilotReminders.makeScenario(scenario, data.model_info.thresholds.policy_enter * 100),
+    };
+    renderDrivingTrip(report, data.model_info);
+    setText("driving-badge", "Synthetic 提醒情境");
+    setText("driving-for", scenario.label + " · " + data.notice);
+    setText("risk-label", "手工情境 · 非模型推論");
+    setText("risk-chart-note", "曲線與事件皆為手工編排：00:00 為 25%、00:10 為 40%、00:20 達到 50% 才提醒。此門檻僅用於 Synthetic 情境展示，並非正式事件警示規則。");
+    document.getElementById("model-inputs").classList.add("hidden");
+    document.getElementById("driving-toolbar").classList.add("hidden");
+    document.getElementById("restore-driving").classList.remove("hidden");
+    setText("factor-label", "情境說明");
+    setText("risk-factors", "這是提醒介面與固定語音的展示，不使用模型特徵或真實資料。");
+  });
+  document.getElementById("restore-driving").addEventListener("click", () => {
+    if (state.driver) selectDriver(state.driver.driver_id).catch(handleLoadError);
+  });
+}
 
 function formatClock(minutes) {
-  const total = Math.max(0, Math.round(minutes * 60));
+  const total = Math.max(0, Math.floor(minutes * 60 + 1e-6));
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-function renderRiskChart(container, timeline, thresholds, nowIndex) {
+function renderRiskChart(container, timeline, thresholds, nowIndex, currentMinute = null) {
   container.replaceChildren();
   const width = 640, height = 230, left = 34, right = 12, top = 14, bottom = 28;
   const points = timeline.points;
-  const now = points[nowIndex][0];
+  const now = currentMinute ?? points[nowIndex][0];
   const minMinute = Math.min(points[0][0], 0);
   const maxMinute = Math.max(points[points.length - 1][0], 1);
   const x = (minute) => left + ((minute - minMinute) / (maxMinute - minMinute)) * (width - left - right);
@@ -230,7 +271,7 @@ function renderRiskChart(container, timeline, thresholds, nowIndex) {
   svg.addEventListener("mouseleave", () => tooltip.classList.add("hidden"));
   const legend = document.createElement("div");
   legend.className = "chart-legend";
-  legend.innerHTML = '<span><i class="line"></i>預測風險</span><span><i class="dash"></i>提醒門檻 50%（橘線 40% 為解除）</span><span><i class="alert"></i>系統播報</span><span><i class="event"></i>已發生的事件</span>';
+  legend.innerHTML = `<span><i class="line"></i>預測風險</span><span><i class="dash"></i>提醒門檻 ${Math.round(thresholds.policy_enter * 100)}%（橘線 ${Math.round(thresholds.policy_reset * 100)}% 為解除）</span><span><i class="alert"></i>模型提醒</span><span><i class="event"></i>已發生的事件</span>`;
   container.append(legend, svg, tooltip);
 }
 
@@ -246,15 +287,29 @@ function renderAlertFeed(timeline, now) {
   const list = document.getElementById("alert-timeline");
   list.replaceChildren();
   const fired = timeline.alerts.filter((alert) => alert.minute <= now);
+  const detections = SafePilotReminders.notifications(timeline, now).filter((n) => n.source === "detected_event");
   const confirmed = fired.filter((a) => a.event_label && a.minute + a.lead_seconds / 60 <= now).length;
-  setText("timeline-label", `到目前為止的提醒：${fired.length} 次，其中 ${confirmed} 次後來真的發生事件`);
-  if (!fired.length) {
+  setText("timeline-label", `模型提醒 ${fired.length} 次（${confirmed} 次後續有事件） · 事件提醒 ${detections.length} 次`);
+  for (const notification of [...detections].reverse()) {
+    const item = document.createElement("div");
+    item.className = `timeline-item reminder-${notification.category}`;
+    const title = document.createElement("strong");
+    title.textContent = `${formatClock(notification.minute)} · ${notification.icon} ${notification.title}`;
+    const source = document.createElement("span");
+    source.className = "reminder-origin";
+    source.textContent = reminderSource(notification, timeline);
+    const message = document.createElement("span");
+    message.textContent = notification.text;
+    item.append(title, source, message);
+    list.append(item);
+  }
+  if (!fired.length && !detections.length) {
     const item = document.createElement("div");
     item.className = "timeline-item silent";
     const title = document.createElement("strong");
     title.textContent = "還沒有提醒";
     const detail = document.createElement("span");
-    detail.textContent = "預測風險超過 50% 時，系統才會出聲。";
+    detail.textContent = timeline.is_reminder_scenario ? "請播放到 00:20 查看此情境的提醒。" : `模型達到 ${Math.round(player.info.thresholds.policy_enter * 100)}% 門檻時才會提醒；不預測特定事件類型。`;
     item.append(title, detail);
     list.append(item);
     return;
@@ -263,6 +318,11 @@ function renderAlertFeed(timeline, now) {
     const item = document.createElement("div");
     const title = document.createElement("strong");
     title.textContent = `${formatClock(alert.minute)} · 預測 ${alert.risk_pct}%${alert.escalation ? " · 升級" : ""}`;
+    const source = document.createElement("span");
+    source.className = "reminder-origin";
+    source.textContent = reminderSource({ source: "model_prediction" }, timeline);
+    const message = document.createElement("span");
+    message.textContent = SafePilotReminders.categories.general.text;
     const detail = document.createElement("span");
     const eventAt = alert.event_label ? alert.minute + alert.lead_seconds / 60 : null;
     if (eventAt !== null && eventAt <= now) {
@@ -275,7 +335,7 @@ function renderAlertFeed(timeline, now) {
       item.className = "timeline-item silent";
       detail.textContent = "60 秒內沒有發生事件";
     }
-    item.append(title, detail);
+    item.append(title, source, message, detail);
     list.append(item);
   }
 }
@@ -284,7 +344,8 @@ function renderFrame() {
   const { report, info, index } = player;
   const timeline = report.risk_timeline;
   const point = timeline.points[index];
-  const [now, pct, code, speed, decel, distract] = point;
+  const [, pct, code, speed, decel, distract] = point;
+  const now = player.seconds / 60;
   const thresholds = info.thresholds;
   setText("risk-score", `${pct}%`);
   setText("risk-dial-caption", "未來 60 秒風險");
@@ -292,9 +353,13 @@ function renderFrame() {
   setText("risk-event", decisionText(point, thresholds));
   document.getElementById("risk-dial").style.setProperty("--score", `${(pct / 100) * 360}deg`);
   const banner = document.getElementById("voice-banner");
-  const lastSpeak = [...timeline.points.slice(0, index + 1)].reverse().find((p) => SPEAK_TEXT[p[2]]);
-  if (lastSpeak && now - lastSpeak[0] < 0.34) {
-    banner.textContent = `🔊 ${SPEAK_TEXT[lastSpeak[2]]}`;
+  const lastSpeak = SafePilotReminders.notifications(timeline, now).at(-1);
+  if (lastSpeak && now - lastSpeak.minute < 0.34) {
+    banner.className = `voice-banner reminder-${lastSpeak.category}`;
+    setText("reminder-title", `${lastSpeak.icon} ${lastSpeak.title}`);
+    setText("reminder-source", reminderSource(lastSpeak, timeline));
+    setText("reminder-text", lastSpeak.text);
+    if (lastSpeak.source === "detected_event") setText("risk-event", `分類提醒：${lastSpeak.title}（Synthetic 風險已達 50%）`);
     banner.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");
@@ -303,38 +368,53 @@ function renderFrame() {
   setText("in-decel", decel === null || decel === undefined ? "—" : `${decel} 次`);
   setText("in-distract", distract === null || distract === undefined ? "—" : `${distract} 次`);
   setText("play-clock", `${formatClock(now)} / ${formatClock(timeline.points[timeline.points.length - 1][0])}`);
-  document.getElementById("play-slider").value = String(index);
-  renderRiskChart(document.getElementById("risk-chart"), timeline, thresholds, index);
+  document.getElementById("play-slider").value = String(Math.floor(player.seconds));
+  renderRiskChart(document.getElementById("risk-chart"), timeline, thresholds, index, now);
   renderAlertFeed(timeline, now);
 }
 
-function speak(code) {
-  if (!document.getElementById("play-voice").checked || !("speechSynthesis" in window) || !SPEAK_TEXT[code]) return;
-  const utterance = new SpeechSynthesisUtterance(SPEAK_TEXT[code]);
+function speak(notification) {
+  if (!document.getElementById("play-voice").checked || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(notification.text);
   utterance.lang = "zh-TW";
   window.speechSynthesis.speak(utterance);
 }
 
-function stopPlayer() {
+function stopPlayer(cancelSpeech = true) {
   if (player.timer) clearInterval(player.timer);
   player.timer = null;
+  if (cancelSpeech && "speechSynthesis" in window) window.speechSynthesis.cancel();
   document.getElementById("play-btn").textContent = "▶ 播放";
 }
 
 function startPlayer() {
   const points = player.report.risk_timeline.points;
-  if (player.index >= points.length - 1) player.index = 0;
+  const { start, end } = SafePilotPlayback.bounds(points);
+  if (player.seconds >= end) { player.index = 0; player.seconds = start; player.lastSpokenIndex = -1; }
+  if (player.lastSpokenIndex !== player.index && Math.abs(player.seconds - points[player.index][0] * 60) < 1e-8) {
+    for (const notification of SafePilotReminders.frameNotifications(player.report.risk_timeline, player.index)) speak(notification);
+    player.lastSpokenIndex = player.index;
+  }
+  renderFrame();
   const speed = Number(document.getElementById("play-speed").value);
+  let previousTime = performance.now();
   document.getElementById("play-btn").textContent = "⏸ 暫停";
   player.timer = setInterval(() => {
-    if (player.index >= points.length - 1) {
-      stopPlayer();
-      return;
+    const currentTime = performance.now();
+    const beforeSeconds = Math.floor(player.seconds);
+    const beforeIndex = player.index;
+    player.seconds = SafePilotPlayback.advance(player.seconds, currentTime - previousTime, speed, end);
+    previousTime = currentTime;
+    player.index = SafePilotPlayback.indexAt(points, player.seconds);
+    const notifications = [];
+    for (let index = beforeIndex + 1; index <= player.index; index += 1) {
+      notifications.push(...SafePilotReminders.frameNotifications(player.report.risk_timeline, index));
     }
-    player.index += 1;
-    speak(points[player.index][2]);
-    renderFrame();
-  }, 10000 / speed);
+    for (const notification of new Map(notifications.map((n) => [n.category, n])).values()) speak(notification);
+    player.lastSpokenIndex = player.index;
+    if (Math.floor(player.seconds) !== beforeSeconds || player.index !== beforeIndex) renderFrame();
+    if (player.seconds >= end) stopPlayer(false);
+  }, 100);
 }
 
 function loadPlayerTrip(report, info) {
@@ -342,10 +422,14 @@ function loadPlayerTrip(report, info) {
   player.report = report;
   player.info = info;
   player.index = 0;
+  player.seconds = SafePilotPlayback.bounds(report.risk_timeline.points).start;
+  player.lastSpokenIndex = -1;
   document.getElementById("play-btn").textContent = "▶ 開始模擬行駛";
   const slider = document.getElementById("play-slider");
-  slider.max = String(report.risk_timeline.points.length - 1);
-  setText("driving-for", `${state.driver.driver_name} · 第 ${report.ref} 趟 · ${report.date} · ${report.plate ?? "—"}`);
+  const bounds = SafePilotPlayback.bounds(report.risk_timeline.points);
+  slider.min = String(Math.floor(bounds.start));
+  slider.max = String(Math.ceil(bounds.end));
+  setText("driving-for", `${state.driver?.driver_name ?? "Synthetic"} · 第 ${report.ref} 趟 · ${report.date} · ${report.plate ?? "—"}`);
   renderFrame();
 }
 
@@ -901,6 +985,7 @@ function showReport(ref) {
 }
 
 async function selectDriver(driverId) {
+  document.getElementById("restore-driving").classList.add("hidden");
   const entry = state.index.drivers.find((driver) => driver.driver_id === driverId);
   const data = await loadView(`driver-${driverId}`, state.source);
   assertContract("predrive", data.predrive, state.source);
@@ -961,6 +1046,7 @@ function activateView(viewName) {
 }
 
 async function initialize() {
+  setupReminderScenarios().catch(handleLoadError);
   document.querySelectorAll(".stage-button").forEach((button) => {
     button.addEventListener("click", () => activateView(button.dataset.view));
   });
@@ -988,7 +1074,11 @@ async function initialize() {
     });
     document.getElementById("play-slider").addEventListener("input", (event) => {
       stopPlayer();
-      player.index = Number(event.target.value);
+      const points = player.report.risk_timeline.points;
+      const bounds = SafePilotPlayback.bounds(points);
+      player.seconds = Math.max(bounds.start, Math.min(bounds.end, Number(event.target.value)));
+      player.index = SafePilotPlayback.indexAt(points, player.seconds);
+      player.lastSpokenIndex = player.index;
       renderFrame();
     });
     document.getElementById("report-select").addEventListener("change", (event) => {
