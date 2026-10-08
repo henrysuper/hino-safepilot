@@ -1131,7 +1131,7 @@ async function selectDriver(driverId) {
   state.driver = entry;
   state.reports = new Map(data.reports.map((report) => [report.ref, report]));
   document.getElementById("driver-select").value = driverId;
-  setText("driver-meta", `${entry.primary_type} 系${entry.new_driver ? " · 新進駕駛" : ""} · 平均 ${entry.average_score ?? "—"} 分 · ${rankText(entry)}`);
+  renderDriverMeta();
 
   setText("predrive-for", `${entry.driver_name} · 下一趟出發前`);
   renderPredrive(data.predrive);
@@ -1205,8 +1205,23 @@ function activateView(viewName) {
 
 // 頂層分類切換:安全教練 / 油耗教練。只控制哪一組 nav/section 可見,view 切換仍走 activateView。
 const COACH_DEFAULT_VIEW = { safety: "predrive", fuel: "fuelreport" };
+let currentCoach = "safety";
+
+// driver-meta 依分類顯示對應分數(安全教練→安全分數;油耗教練→油耗分數)
+function renderDriverMeta() {
+  const entry = state.driver;
+  if (!entry) return;
+  const base = `${entry.primary_type} 系${entry.new_driver ? " · 新進駕駛" : ""}`;
+  if (currentCoach === "fuel") {
+    const fuelScore = (entry.safety_fuel && entry.safety_fuel.average_fuel_score);
+    setText("driver-meta", `${base} · 平均油耗分數 ${fuelScore ?? "—"} 分`);
+  } else {
+    setText("driver-meta", `${base} · 平均安全分數 ${entry.average_score ?? "—"} 分 · ${rankText(entry)}`);
+  }
+}
 
 function activateCoach(coach) {
+  currentCoach = coach;
   document.querySelectorAll(".coach-button").forEach((button) => {
     const active = button.dataset.coach === coach;
     button.classList.toggle("active", active);
@@ -1218,6 +1233,7 @@ function activateCoach(coach) {
   });
   // 切到該分類的預設 view(activateView 會處理 section 的 active)
   activateView(COACH_DEFAULT_VIEW[coach]);
+  renderDriverMeta();
 }
 
 async function initialize() {
