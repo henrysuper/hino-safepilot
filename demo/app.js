@@ -351,10 +351,6 @@ function loadPlayerTrip(report, info) {
 
 function renderDrivingTrip(report, info) {
   setText("driving-title", "未來 60 秒風險預測");
-  setText(
-    "driving-disclosure",
-    `Evaluation Mode: Offline · 模擬行駛：用這趟的歷史資料逐點重現，模型每次只看得到「現在」以前 5 分鐘的資料，預測未來 60 秒；結果要等 60 秒後才揭曉。資料錄製時還沒有 SafePilot，未連接即時車輛。模型 ${info.model_version}、提醒規則 ${info.policy_version}。資料期間：${report.risk_timeline.split_label}。`
-  );
   setText("driving-badge", state.source === "local" ? "模擬行駛" : "Synthetic Demo");
   setText("risk-horizon", "60 秒");
   setText("risk-model", info.model_version);
@@ -386,7 +382,6 @@ function showDrivingStatic() {
   document.getElementById("driving-for").classList.add("hidden");
   document.getElementById("risk-chart-panel").classList.add("hidden");
   setText("driving-title", "未來 60 秒風險契約預覽");
-  setText("driving-disclosure", "Evaluation Mode: Offline。下方時間線與風險數值皆是 Synthetic Demo，未連接即時車輛或 production alert engine。");
   setText("driving-badge", "Synthetic Demo");
   setText("risk-dial-caption", "模擬機率");
   setText("factor-label", "模擬 top factors");

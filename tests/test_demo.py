@@ -71,8 +71,9 @@ def test_demo_discloses_offline_experiment_and_synthetic_preview() -> None:
         path.read_text(encoding="utf-8")
         for path in (DEMO / "index.html", DEMO / "app.js")
     )
-    assert "Model Status: XGBoost Experiment Ready · Not Production" in text
-    assert "Evaluation Mode: Offline" in text
+    # The 60-second tab must stay labelled as an offline experiment / simulated replay.
+    assert "Offline Experiment" in text
+    assert "模擬行駛" in text
+    assert "歷史資料重現的模擬行駛" in text
     assert "Synthetic Demo" in text
-    assert "未連接即時車輛" in text
     assert "Alert Policy V1 · Synthetic Timeline" in text
