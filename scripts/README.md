@@ -23,6 +23,14 @@ python -m hino_safepilot.analytics daily-goal --trip-id <local-trip-id>
 
 `build` refuses to overwrite `data/processed/analytics/`. Report commands default to the mock provider. `--provider gemini` is opt-in, requires the optional SDK and environment variables, and must use synthetic payloads until real-data egress receives human approval.
 
+One-click local build of every safety output (driver demo + back-office 安全分數報告 tab):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_safety.ps1
+```
+
+It checks the required inputs and names the Drive folder for anything missing, removes `desktop.ini` files and old outputs, then runs build, score, segments (if needed), road, alerts, drivers and export-demo, stopping at the first failure with the log tail. Road context and the 60-second replay are skipped with a note when their inputs are absent.
+
 Safety Score V1 and pre-drive briefing (see `docs/safety_score_v1.md`):
 
 ```powershell

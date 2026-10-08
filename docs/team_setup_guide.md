@@ -118,6 +118,16 @@ data\processed\analytics\improvement_goals.jsonl
 
 # 6. 執行安全分數與 Demo
 
+### 最快的方法：一鍵腳本
+
+複製好資料（第 4 節與下面 6.1b–6.1d 列的檔案）後，在專案根目錄執行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_safety.ps1
+```
+
+腳本會檢查必要檔案（缺什麼會說從雲端哪裡複製）、清掉 `desktop.ini` 與舊的輸出、依序跑完 6.0–6.2 的所有步驟，最後顯示成功或卡在哪一步（完整紀錄在 `data\processed\build_safety.log`）。路況比較與 60 秒預測的資料沒放好時會自動略過並說明。下面是腳本做的各個步驟，需要單獨重跑某一步時再參考。
+
 ### 6.0 重建行程分析（Safety Score V1.1 起需要做一次）
 
 雲端硬碟上的 `data\processed\analytics` 是舊版，沒有統計「鏡頭遮蔽」和「抽菸」事件。請刪除後重建（約 20–30 秒）：
