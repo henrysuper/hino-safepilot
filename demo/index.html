@@ -22,7 +22,12 @@
         <div class="system-chip"><span class="status-dot"></span>Local · Privacy First</div>
       </header>
 
-      <nav class="stage-nav" aria-label="SafePilot 三階段導覽">
+      <nav class="coach-nav" aria-label="教練分類">
+        <button class="coach-button active" data-coach="safety" aria-selected="true">安全教練</button>
+        <button class="coach-button" data-coach="fuel" aria-selected="false">油耗教練</button>
+      </nav>
+
+      <nav class="stage-nav" data-coach="safety" aria-label="SafePilot 安全教練導覽">
         <button class="stage-button active" data-view="predrive" aria-selected="true">
           <span class="stage-number">01</span><span>行前安全提醒</span>
         </button>
@@ -34,6 +39,15 @@
         </button>
         <button class="stage-button" data-view="drivers" aria-selected="false">
           <span class="stage-number">04</span><span>安全歷史紀錄</span>
+        </button>
+      </nav>
+
+      <nav class="stage-nav hidden" data-coach="fuel" aria-label="油耗教練導覽">
+        <button class="stage-button active" data-view="fuelreport" aria-selected="true">
+          <span class="stage-number">01</span><span>油耗報告</span>
+        </button>
+        <button class="stage-button" data-view="fuelhistory" aria-selected="false">
+          <span class="stage-number">02</span><span>油耗歷史紀錄</span>
         </button>
       </nav>
 
@@ -50,7 +64,7 @@
           <span>請確認 localhost server 與 synthetic JSON 是否可讀取。</span>
         </div>
 
-        <section id="predrive-view" class="view active" aria-labelledby="predrive-title">
+        <section id="predrive-view" class="view active" data-coach="safety" aria-labelledby="predrive-title">
           <div class="view-heading">
             <div><p class="eyebrow">Before the trip</p><h2 id="predrive-title">安全提醒</h2><p id="predrive-for" class="view-subtitle">—</p></div>
             <span class="contract-chip">Deterministic Score &amp; Goal</span>
@@ -78,7 +92,7 @@
           </div>
         </section>
 
-        <section id="driving-view" class="view" aria-labelledby="driving-title">
+        <section id="driving-view" class="view" data-coach="safety" aria-labelledby="driving-title">
           <div class="view-heading">
             <div><p class="eyebrow">During the trip</p><h2 id="driving-title">未來 60 秒風險契約預覽</h2><p id="driving-for" class="view-subtitle hidden">—</p></div>
             <span class="contract-chip warning">Offline Experiment</span>
@@ -152,7 +166,7 @@
           <p class="microcopy">Threshold、cooldown、escalation 與 hysteresis 皆為 experimental prototype，尚未經 HINO／domain expert 核准；本頁不執行模型推論。</p>
         </section>
 
-        <section id="postdrive-view" class="view" aria-labelledby="postdrive-title">
+        <section id="postdrive-view" class="view" data-coach="safety" aria-labelledby="postdrive-title">
           <div class="view-heading">
             <div><p class="eyebrow">After the trip</p><h2 id="postdrive-title">把每趟行程變成下一次進步</h2><p id="postdrive-for" class="view-subtitle">—</p></div>
             <span class="contract-chip">Post-trip Analytics</span>
@@ -219,7 +233,7 @@
           <p class="microcopy score-disclaimer">安全分數由固定公式計算（safety-score-v1），權重與參考值為 prototype 設定，尚未經 HINO／domain expert 驗證；AI 只負責文字說明，不參與評分。</p>
         </section>
 
-        <section id="drivers-view" class="view" aria-labelledby="drivers-title">
+        <section id="drivers-view" class="view" data-coach="safety" aria-labelledby="drivers-title">
           <div class="view-heading">
             <div><p class="eyebrow">Driver history</p><h2 id="drivers-title">安全歷史紀錄</h2></div>
             <span class="contract-chip warning">模擬駕駛名單</span>
@@ -254,6 +268,70 @@
             <div id="drv-trip-detail" class="trip-detail hidden"></div>
           </article>
         </section>
+        <section id="fuelreport-view" class="view" data-coach="fuel" aria-labelledby="fuelreport-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">Fuel coach</p><h2 id="fuelreport-title">油耗報告</h2><p id="fuelreport-for" class="view-subtitle">—</p></div>
+            <span class="contract-chip">Fuel Analytics</span>
+          </div>
+          <div class="driver-toolbar">
+            <label for="fuel-report-select">選擇行程</label>
+            <select id="fuel-report-select"></select>
+            <span id="fuel-report-meta" class="microcopy">—</span>
+          </div>
+          <div class="score-grid">
+            <article class="score-card accent-card">
+              <p class="card-label">本趟油耗分數</p>
+              <div class="score-ring" id="fuel-score-ring"><div><strong id="fuel-score-overall">—</strong><span>/ 100</span></div></div>
+              <div class="score-grade-row"><span id="fuel-score-grade" class="grade-badge large">—</span><p id="fuel-score-note">—</p></div>
+            </article>
+            <article class="metric-panel">
+              <p class="card-label">本趟油耗指標</p>
+              <div id="fuel-metrics" class="metric-cards"></div>
+              <p class="card-label deduction-label">與同車型一般水準比較</p>
+              <p id="fuel-vs-peer" class="lead-copy">—</p>
+            </article>
+          </div>
+          <div class="report-grid">
+            <article class="event-card">
+              <p class="card-label">可改善的駕駛行為(影響油耗)</p>
+              <div id="fuel-behavior-list" class="event-list"></div>
+            </article>
+            <article class="ai-report-card accent-card">
+              <p class="card-label">省油建議 · Synthetic</p>
+              <blockquote id="fuel-ai-summary">資料載入中…</blockquote>
+              <div class="next-focus"><span>NEXT FOCUS</span><strong id="fuel-next-focus">—</strong></div>
+            </article>
+          </div>
+          <p class="microcopy score-disclaimer">油耗分數與指標為 prototype 展示;實際油耗預測由油耗模型(含載重代理)產生,此處數值為 synthetic 範例。AI 只負責文字說明。</p>
+        </section>
+
+        <section id="fuelhistory-view" class="view" data-coach="fuel" aria-labelledby="fuelhistory-title">
+          <div class="view-heading">
+            <div><p class="eyebrow">Fuel history</p><h2 id="fuelhistory-title">油耗歷史紀錄</h2><p id="fuelhistory-for" class="view-subtitle">—</p></div>
+            <span class="contract-chip warning">模擬駕駛資料</span>
+          </div>
+          <div class="driver-stats">
+            <article class="trip-metric"><span>平均油耗分數</span><strong id="fuel-avg-score">—</strong><em id="fuel-avg-note" class="rank-note">—</em></article>
+            <article class="trip-metric"><span>平均油耗效率</span><strong id="fuel-avg-eff">—</strong></article>
+            <article class="trip-metric"><span>總里程／總油耗</span><strong id="fuel-totals">—</strong></article>
+            <article class="trip-metric"><span>評分趟數</span><strong id="fuel-trip-count">—</strong></article>
+          </div>
+          <article class="metric-panel">
+            <p class="card-label">每趟油耗效率走勢(km/L,越高越省)</p>
+            <div id="fuel-chart" class="score-chart" role="img" aria-label="每趟油耗效率走勢"></div>
+            <p class="microcopy">滑鼠移到點上可看該趟數值。資料為 synthetic 範例。</p>
+          </article>
+          <article class="metric-panel trip-history">
+            <p class="card-label">行程油耗紀錄(最新在上)</p>
+            <div class="table-scroll">
+              <table class="history-table">
+                <thead><tr><th>第幾趟</th><th>日期</th><th>里程</th><th>油耗(L)</th><th>效率(km/L)</th></tr></thead>
+                <tbody id="fuel-trip-rows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
         <section class="page-notes" aria-label="資料與模型說明">
           <div id="local-banner" class="local-banner hidden" role="note">
             <strong>本機私有資料</strong>
