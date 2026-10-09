@@ -56,7 +56,16 @@ def template_dispatch_report(facts: dict) -> str:
     runner = facts.get("runner_up")
     if runner and runner.get("delta_L"):
         parts.append(f"比次佳選擇省 {runner['delta_L']:.1f} 公升（約 {runner['delta_pct']:.0f}%）。")
-    if facts.get("health_overridden"):
+    safety = facts.get("safety") or {}
+    # 具名駕駛模式：優先講駕駛安全（因為派車是以具名駕駛為單位）。
+    if safety:
+        if safety.get("safety_overridden") and safety.get("cheapest_driver_name"):
+            parts.append(f"油耗最省的駕駛安全分較低，已改派安全分較佳的 {safety['driver_name']}。")
+        elif safety.get("safety_grade") and safety["safety_grade"] not in ("ok", "unknown"):
+            parts.append(f"建議駕駛安全分為「{safety.get('safety_grade_label')}」，已計入安全風險成本後仍最適合。")
+        elif safety.get("safety_declining"):
+            parts.append("建議駕駛近期安全分略有退步，已納入考量。")
+    elif facts.get("health_overridden") and facts.get("cheapest_health_grade_label"):
         parts.append(f"最省油的車車況為「{facts.get('cheapest_health_grade_label')}」，已改派車況較佳的車。")
     elif rec.get("health_grade") and rec["health_grade"] != "ok":
         parts.append(f"這台車車況為「{rec['health_grade_label']}」，已計入車況風險成本後仍最省。")

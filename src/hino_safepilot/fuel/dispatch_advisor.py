@@ -22,13 +22,20 @@ import numpy as np
 import pandas as pd
 
 from .dispatch_health import HealthPolicy, apply_health_gate, classify_task, fit_bands
+from .dispatch_safety import SafetyPolicy, apply_safety_gate
 from .fuel_predictor import FuelPredictor
 
 TASK_LEVEL_LABEL = {"light": "短途", "standard": "一般", "heavy": "長途/高速"}
 GRADE_LABEL = {"ok": "良好", "caution": "注意", "block": "待檢修"}
+SAFETY_GRADE_LABEL = {"ok": "良好", "caution": "注意", "block": "偏低", "unknown": "無資料"}
 DRIVER_TYPE_LABEL = {
     "very_eco": "非常省油", "eco": "省油", "normal": "一般",
     "aggressive": "激進", "very_aggressive": "非常激進",
+}
+# 虛擬駕駛的 style_label -> 油耗模型的駕駛風格類型（用來把具名駕駛對回已算好的類型油耗）。
+STYLE_LABEL_TO_TYPE = {
+    "很省油": "very_eco", "省油": "eco", "一般": "normal",
+    "偏耗油": "aggressive", "很耗油": "very_aggressive",
 }
 
 
@@ -77,11 +84,46 @@ def _congested_segments(segments: list[dict], top: int = 2) -> list[dict]:
     return [s for s in graded if s["congestion_index"] is not None and s["congestion_index"] < 0.9][:top]
 
 
+def _expand_to_named_drivers(options: list[dict], drivers: list[dict], driver_type_names) -> list[dict]:
+    """把「車 × 駕駛類型」選項展開成「車 × 具名駕駛」。
+
+    每位具名駕駛用其 style_label 對應到一個駕駛風格類型，取該車對應類型的油耗預測，
+    不重算模型。driver_name/driver_id 帶入；供後續用個人安全分數排序。
+    僅保留每台車「可被該車系駕駛駕駛」的組合（demo：同車系全可）。
+    """
+
+    valid_types = set(driver_type_names)
+    vehicles = sorted({o["vehicle_id"] for o in options})
+    # 以 (vehicle_id, driver_type) 建索引，取每位駕駛對應風格類型在各車上的油耗。
+    by_vt: dict[tuple, dict] = {}
+    for o in options:
+        by_vt[(o["vehicle_id"], o["driver_type"])] = o
+    expanded = []
+    for d in drivers:
+        dtype = STYLE_LABEL_TO_TYPE.get(d.get("style_label"), "normal")
+        if dtype not in valid_types:
+            dtype = "normal"
+        # 每位駕駛配其所屬車系的每一台車，取「該駕駛風格 × 該車」的油耗。
+        for vid in vehicles:
+            src = by_vt.get((vid, dtype))
+            if src is None:
+                continue
+            new = dict(src)
+            new["driver_id"] = d["driver_id"]
+            new["driver_name"] = d.get("driver_name") or d["driver_id"]
+            new["driver_style_type"] = dtype
+            expanded.append(new)
+    return expanded
+
+
 def recommend(
     predictor: FuelPredictor,
     request: DispatchRequest,
     policy: HealthPolicy | None = None,
     routes=None,
+    drivers: list[dict] | None = None,
+    safety_by_driver: dict | None = None,
+    safety_policy: "SafetyPolicy | None" = None,
 ) -> dict:
     """產生單程派車決策。回傳 dict（識別仍為 enabledCode）。
 
@@ -115,30 +157,59 @@ def recommend(
     chosen = _best_route(result)
     distance_km = float(chosen["distance_km"])
 
-    # --- 車況門檻（主排序鍵 dispatch_fuel_L）。health series index = enabledCode。
+    # 階段2：若提供具名駕駛名單，把「車×類型」展開成「車×具名駕駛」，之後能接個人安全分數。
+    named = bool(drivers)
+    base_options = (_expand_to_named_drivers(chosen["options"], drivers, predictor.artifacts.driver_types.names)
+                    if named else chosen["options"])
+
+    # --- 車況門檻（dispatch_fuel_L）。health series index = enabledCode。
     health = predictor.artifacts.health
     bands = fit_bands(health, policy)
     task_level = classify_task(distance_km, policy)
     graded = apply_health_gate(
-        chosen["options"], health, distance_km, policy=policy, bands=bands, id_key="vehicle_id"
+        base_options, health, distance_km, policy=policy, bands=bands, id_key="vehicle_id"
     )
 
-    # --- 車輛排序 + 與建議車的差距。
+    # --- 駕駛安全門檻（只在具名駕駛 + 有安全資料時）：dispatch_score = dispatch_fuel_L × 安全成本。
+    sort_key = "dispatch_fuel_L"
+    safety_on = named and bool(safety_by_driver)
+    if safety_on:
+        graded = apply_safety_gate(graded, safety_by_driver, distance_km,
+                                   policy=safety_policy, base_key="dispatch_fuel_L", id_key="driver_id")
+        sort_key = "dispatch_score"
+
+    # --- 排序 + 與建議的差距（以最終綜合鍵為準）。
+    graded.sort(key=lambda o: (o.get("health_excluded", False), o.get("safety_excluded", False), o[sort_key]))
+    # 具名模式：一位駕駛只保留其最佳車（避免同一駕駛在每台車各出現一列）。
+    if named:
+        seen_driver = set()
+        deduped = []
+        for o in graded:
+            did = o.get("driver_id")
+            if did in seen_driver:
+                continue
+            seen_driver.add(did)
+            deduped.append(o)
+        graded = deduped
     best = graded[0]
-    best_fuel = float(best["dispatch_fuel_L"])
+    best_cost = float(best[sort_key])
     ranking = []
     for i, opt in enumerate(graded):
-        delta_l = round(float(opt["dispatch_fuel_L"]) - best_fuel, 2)
-        delta_pct = round(delta_l / best_fuel * 100, 1) if best_fuel else 0.0
+        delta_l = round(float(opt[sort_key]) - best_cost, 2)
+        delta_pct = round(delta_l / best_cost * 100, 1) if best_cost else 0.0
         ranking.append({**opt, "rank": i + 1, "delta_L": delta_l, "delta_pct": delta_pct})
 
     recommended = {**ranking[0]}
     runner_up = ranking[1] if len(ranking) > 1 else None
 
-    # 若「最省油（未計車況）」的車不是「建議車」，表示車況改變了結論，理由要點出。
-    cheapest_by_fuel = min(chosen["options"], key=lambda o: o["predicted_fuel_L"])
-    overridden = cheapest_by_fuel["vehicle_id"] != recommended["vehicle_id"] or \
-        cheapest_by_fuel["driver_type"] != recommended["driver_type"]
+    # 若「最省油（未計車況/安全）」的組合不是「建議」，表示車況或安全改變了結論。
+    cheapest_by_fuel = min(base_options, key=lambda o: o["predicted_fuel_L"])
+    if named:
+        overridden = cheapest_by_fuel.get("driver_id") != recommended.get("driver_id") or \
+            cheapest_by_fuel["vehicle_id"] != recommended["vehicle_id"]
+    else:
+        overridden = cheapest_by_fuel["vehicle_id"] != recommended["vehicle_id"] or \
+            cheapest_by_fuel["driver_type"] != recommended["driver_type"]
 
     route_info = {
         "route_id": chosen["route_id"],
@@ -157,7 +228,8 @@ def recommend(
     ]
 
     facts = _build_facts(request, result, route_info, recommended, runner_up,
-                         task_level, bands, overridden, cheapest_by_fuel)
+                         task_level, bands, overridden, cheapest_by_fuel,
+                         named=named, safety_on=safety_on)
 
     return {
         "origin": request.origin,
@@ -177,12 +249,25 @@ def recommend(
 
 
 def _build_facts(request, result, route_info, recommended, runner_up, task_level,
-                 bands, overridden, cheapest_by_fuel) -> dict:
+                 bands, overridden, cheapest_by_fuel, named=False, safety_on=False) -> dict:
     """整理推薦理由所需的事實（純數字 + 標籤，供 narration 使用）。"""
 
     interval = recommended.get("prediction_interval_L") or [None, None]
     congested = route_info["congested_segments"]
+    safety_block = {}
+    if safety_on:
+        safety_block = {
+            "driver_name": recommended.get("driver_name"),
+            "safety_score": recommended.get("safety_score"),
+            "safety_grade": recommended.get("safety_grade"),
+            "safety_grade_label": SAFETY_GRADE_LABEL.get(recommended.get("safety_grade"), recommended.get("safety_grade")),
+            "safety_declining": bool(recommended.get("safety_declining")),
+            "safety_overridden": bool(overridden) and (cheapest_by_fuel.get("driver_id") != recommended.get("driver_id")),
+            "cheapest_driver_name": cheapest_by_fuel.get("driver_name") if overridden else None,
+        }
     return {
+        "named_driver": named,
+        "safety": safety_block or None,
         "origin_name": request.origin_name,
         "destination_name": request.destination_name,
         "distance_km": route_info["distance_km"],
