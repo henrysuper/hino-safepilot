@@ -986,6 +986,145 @@ function showReport(ref) {
   renderAlertReview(report.alert_review);
 }
 
+// ---- 油耗教練:油耗報告 + 油耗歷史(讀現有駕駛資料的油耗欄位,無需新契約檔)----
+function gradeFromScore(score) {
+  if (score === null || score === undefined) return null;
+  if (score >= 90) return "A";
+  if (score >= 80) return "B";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "E";
+}
+
+// 以同車型一般油耗比值(index.safety_fuel.by_grade)推一句比較文字
+function fuelPeerSentence(entry, report) {
+  const sf = state.index && state.index.safety_fuel;
+  const eff = report.trip_summary.fuel_efficiency_km_per_l;
+  if (!sf || !Array.isArray(sf.by_grade) || eff == null) return "尚無同車型比較資料。";
+  const grade = report.safety_score ? report.safety_score.grade : null;
+  const row = sf.by_grade.find((r) => r.grade === grade);
+  if (!row) return `本趟油耗效率 ${eff} km/L。`;
+  const ratio = row.mean_fuel_ratio;
+  const pct = Math.round((1 - ratio) * 100);
+  const dir = ratio <= 1 ? `較一般水準省約 ${pct}%` : `較一般水準多耗約 ${Math.abs(pct)}%`;
+  return `同安全等級(${grade})的行程平均油耗比值 ${ratio}（${dir});本趟效率 ${eff} km/L。`;
+}
+
+function renderFuelReport(report) {
+  if (!report) return;
+  const ts = report.trip_summary;
+  const fuelScore = report.safety_score ? report.safety_score.overall_score : null; // 以安全分數對映示範油耗分數錨
+  // 示範油耗分數:用效率相對基準 5.0 km/L 做簡單映射(純展示;真實由油耗模型產生)
+  const demoFuelScore = ts.fuel_efficiency_km_per_l == null
+    ? null
+    : Math.max(20, Math.min(100, Math.round(50 + (ts.fuel_efficiency_km_per_l - 4) * 18)));
+  const grade = gradeFromScore(demoFuelScore);
+
+  setText("fuel-score-overall", demoFuelScore ?? "—");
+  const gradeEl = document.getElementById("fuel-score-grade");
+  gradeEl.textContent = grade ?? "—";
+  gradeEl.className = `grade-badge large ${grade ? `grade-${grade}` : ""}`;
+  setText("fuel-score-note", demoFuelScore == null ? "本趟資料不足,不計油耗分數。" : "分數越高代表越省油(同車型相對)。");
+  const ring = document.getElementById("fuel-score-ring");
+  if (ring) ring.style.setProperty("--score", `${(demoFuelScore ?? 0) * 3.6}deg`);
+
+  // 本趟油耗指標卡
+  const metrics = [
+    ["行駛距離", ts.distance_km, " km"],
+    ["行程時間", ts.duration_minutes, " min"],
+    ["燃油使用", ts.fuel_used_l, " L"],
+    ["燃油效率", ts.fuel_efficiency_km_per_l, " km/L"],
+  ];
+  const mc = document.getElementById("fuel-metrics");
+  mc.replaceChildren();
+  for (const [label, value, suffix] of metrics) {
+    const card = document.createElement("div");
+    card.className = "trip-metric";
+    const l = document.createElement("span");
+    l.textContent = label;
+    const v = document.createElement("strong");
+    v.textContent = valueOrUnavailable(value, suffix);
+    card.append(l, v);
+    mc.append(card);
+  }
+
+  setText("fuel-vs-peer", fuelPeerSentence(state.driver, report));
+
+  // 可改善的駕駛行為(影響油耗):取安全分數的扣分項裡跟油耗相關的
+  const list = document.getElementById("fuel-behavior-list");
+  list.replaceChildren();
+  const fuelRelated = ["harsh_accel", "harsh_brake", "overspeed", "idle", "急加速", "急減速", "超速", "怠速"];
+  const deductions = (report.safety_score && report.safety_score.top_deductions) || [];
+  const picked = deductions.filter((d) =>
+    fuelRelated.some((k) => (d.category_label || "").includes(k) || (d.label || "").includes(k) || (d.category || "").includes(k))
+  );
+  const rows = picked.length ? picked : deductions.slice(0, 3);
+  if (!rows.length) {
+    const row = document.createElement("div");
+    row.className = "event-row";
+    row.textContent = "本趟沒有明顯影響油耗的駕駛行為,表現良好。";
+    list.append(row);
+  } else {
+    for (const d of rows) {
+      const row = document.createElement("div");
+      row.className = "event-row";
+      const name = document.createElement("span");
+      name.textContent = d.label || d.category_label || "行為";
+      const val = document.createElement("strong");
+      val.textContent = d.observed_value != null ? `${d.observed_value}${d.unit_label || ""}` : "—";
+      row.append(name, val);
+      list.append(row);
+    }
+  }
+
+  // 省油建議:複用 ai_report
+  const ai = report.ai_report || {};
+  setText("fuel-ai-summary", ai.summary || "平穩駕駛、減少急加減速與長時間怠速,是最有效的省油方式。");
+  setText("fuel-next-focus", ai.next_trip_focus || "維持平穩油門");
+}
+
+function renderFuelHistory(entry) {
+  if (!entry) return;
+  const reports = [...state.reports.values()];
+  const withFuel = reports.filter((r) => r.trip_summary && r.trip_summary.fuel_efficiency_km_per_l != null);
+  const sf = entry.safety_fuel || {};
+
+  setText("fuel-avg-score", sf.average_fuel_score ?? "—");
+  setText("fuel-avg-note", sf.average_fuel_score != null ? "同車型相對" : "");
+  const effs = withFuel.map((r) => r.trip_summary.fuel_efficiency_km_per_l);
+  const avgEff = effs.length ? (effs.reduce((a, b) => a + b, 0) / effs.length) : null;
+  setText("fuel-avg-eff", avgEff == null ? "—" : `${avgEff.toFixed(1)} km/L`);
+  const totalKm = withFuel.reduce((a, r) => a + (r.trip_summary.distance_km || 0), 0);
+  const totalL = withFuel.reduce((a, r) => a + (r.trip_summary.fuel_used_l || 0), 0);
+  setText("fuel-totals", `${totalKm.toFixed(0)} km / ${totalL.toFixed(1)} L`);
+  setText("fuel-trip-count", `${withFuel.length} 趟`);
+  setText("fuelhistory-for", `${entry.driver_name}`);
+  setText("fuelreport-for", `${entry.driver_name} · 最新行程`);
+
+  // 效率走勢:複用 renderScoreChart 的樣式,把 score 當成效率×10(讓它落在圖的刻度帶)
+  const chartTrips = withFuel.map((r) => ({
+    ref: r.ref, date: r.date,
+    score: Math.round(r.trip_summary.fuel_efficiency_km_per_l * 10),
+    grade: null,
+  }));
+  renderScoreChart(document.getElementById("fuel-chart"), chartTrips);
+
+  const body = document.getElementById("fuel-trip-rows");
+  body.replaceChildren();
+  for (const r of [...withFuel].reverse()) {
+    const ts = r.trip_summary;
+    const tr = document.createElement("tr");
+    const cells = [r.ref, r.date, `${ts.distance_km} km`, `${ts.fuel_used_l} L`, `${ts.fuel_efficiency_km_per_l} km/L`];
+    cells.forEach((v, i) => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      if (i === 0 || i >= 2) td.className = "num";
+      tr.append(td);
+    });
+    body.append(tr);
+  }
+}
+
 async function selectDriver(driverId) {
   document.getElementById("restore-driving").classList.add("hidden");
   const entry = state.index.drivers.find((driver) => driver.driver_id === driverId);
@@ -994,7 +1133,7 @@ async function selectDriver(driverId) {
   state.driver = entry;
   state.reports = new Map(data.reports.map((report) => [report.ref, report]));
   document.getElementById("driver-select").value = driverId;
-  setText("driver-meta", `${entry.primary_type} 系${entry.new_driver ? " · 新進駕駛" : ""} · 平均 ${entry.average_score ?? "—"} 分 · ${rankText(entry)}`);
+  renderDriverMeta();
 
   setText("predrive-for", `${entry.driver_name} · 下一趟出發前`);
   renderPredrive(data.predrive);
@@ -1013,6 +1152,25 @@ async function selectDriver(driverId) {
   setupDriving(data);
 
   renderDriver(entry);
+
+  // 油耗教練:填行程選單 + 渲染油耗報告/歷史(跟著駕駛切換)
+  const fuelSelect = document.getElementById("fuel-report-select");
+  if (fuelSelect) {
+    fuelSelect.replaceChildren();
+    const fuelReports = data.reports.filter((r) => r.trip_summary && r.trip_summary.fuel_efficiency_km_per_l != null);
+    for (const report of [...fuelReports].reverse()) {
+      const option = document.createElement("option");
+      option.value = String(report.ref);
+      option.textContent = `第 ${report.ref} 趟 · ${report.date} · ${report.trip_summary.fuel_efficiency_km_per_l} km/L`;
+      fuelSelect.append(option);
+    }
+    fuelSelect.onchange = () => {
+      const r = state.reports.get(Number(fuelSelect.value));
+      if (r) renderFuelReport(r);
+    };
+    if (fuelReports.length) renderFuelReport(fuelReports[fuelReports.length - 1]);
+  }
+  renderFuelHistory(entry);
 }
 
 async function loadDriverIndex() {
@@ -1044,10 +1202,46 @@ function activateView(viewName) {
   });
 }
 
+// 頂層分類切換:安全教練 / 油耗教練。只控制哪一組 nav/section 可見,view 切換仍走 activateView。
+const COACH_DEFAULT_VIEW = { safety: "predrive", fuel: "fuelreport" };
+let currentCoach = "safety";
+
+// driver-meta 依分類顯示對應分數(安全教練→安全分數;油耗教練→油耗分數)
+function renderDriverMeta() {
+  const entry = state.driver;
+  if (!entry) return;
+  const base = `${entry.primary_type} 系${entry.new_driver ? " · 新進駕駛" : ""}`;
+  if (currentCoach === "fuel") {
+    const fuelScore = (entry.safety_fuel && entry.safety_fuel.average_fuel_score);
+    setText("driver-meta", `${base} · 平均油耗分數 ${fuelScore ?? "—"} 分`);
+  } else {
+    setText("driver-meta", `${base} · 平均安全分數 ${entry.average_score ?? "—"} 分 · ${rankText(entry)}`);
+  }
+}
+
+function activateCoach(coach) {
+  currentCoach = coach;
+  document.querySelectorAll(".coach-button").forEach((button) => {
+    const active = button.dataset.coach === coach;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  // 顯示該分類的 stage-nav,隱藏另一類
+  document.querySelectorAll(".stage-nav").forEach((nav) => {
+    nav.classList.toggle("hidden", nav.dataset.coach !== coach);
+  });
+  // 切到該分類的預設 view(activateView 會處理 section 的 active)
+  activateView(COACH_DEFAULT_VIEW[coach]);
+  renderDriverMeta();
+}
+
 async function initialize() {
   setupReminderScenarios().catch(handleLoadError);
   document.querySelectorAll(".stage-button").forEach((button) => {
     button.addEventListener("click", () => activateView(button.dataset.view));
+  });
+  document.querySelectorAll(".coach-button").forEach((button) => {
+    button.addEventListener("click", () => activateCoach(button.dataset.coach));
   });
   try {
     const [driving, index] = await Promise.all([loadView("driving", "synthetic"), loadDriverIndex()]);

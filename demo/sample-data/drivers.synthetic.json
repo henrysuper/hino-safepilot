@@ -3,7 +3,7 @@
   "view": "drivers",
   "data_classification": "synthetic",
   "prototype_marker": "SYNTHETIC_DEMO",
-  "mock_note": "Synthetic Demo：駕駛、車牌、日期與分數皆為示意用的合成資料。真實模式中，駕駛名單與行程分配為模擬，駕駛之間的差異（含排名）有一部分是分配規則造成的，只用來展示流程。",
+  "mock_note": "Synthetic Demo:駕駛、車牌、分數皆為示意合成資料,僅展示流程。",
   "drivers": [
     {
       "driver_id": "D01",
