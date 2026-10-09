@@ -262,6 +262,8 @@ main { padding: 42px 0 54px; }
 .timeline-item.reminder-fatigue { border-left-color: #675181; }
 .page-notes { display: grid; gap: 10px; margin-top: 36px; }
 .page-notes .local-banner, .page-notes .mock-note { margin: 0; }
+.data-source-banner { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding: 14px 18px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); font-size: .88rem; line-height: 1.6; }
+.data-source-banner code { padding: 1px 6px; border-radius: 6px; background: rgba(168, 23, 33, .08); font-size: .82rem; }
 .error-panel { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; padding: 18px 22px; border: 1px solid #efb8bc; border-radius: 16px; background: #fff3f4; color: var(--red-dark); }
 .hidden { display: none !important; }
 footer { display: flex; justify-content: space-between; gap: 20px; padding: 24px 0 35px; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }

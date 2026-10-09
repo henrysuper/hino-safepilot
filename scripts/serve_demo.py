@@ -3,8 +3,9 @@
 Usage (repository root):
     python scripts/serve_demo.py [--port 8000]
 
-Open http://127.0.0.1:8000 for synthetic data, or
-http://127.0.0.1:8000/?source=local after `hino-analytics export-demo`.
+Open http://127.0.0.1:8000 : the page uses the private local views when
+`hino-analytics export-demo` has produced them, otherwise the synthetic samples.
+Add ?source=synthetic to force the samples (public demos, screenshots).
 """
 
 from __future__ import annotations
@@ -42,8 +43,9 @@ def main() -> None:
     args = parser.parse_args()
     handler = partial(DemoHandler, directory=str(DEMO))
     server = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
-    print(f"Synthetic demo:  http://127.0.0.1:{args.port}/")
-    print(f"Local private:   http://127.0.0.1:{args.port}/?source=local")
+    local = (LOCAL_VIEWS / "drivers.local.json").is_file()
+    print(f"Demo:            http://127.0.0.1:{args.port}/  ({'local data found' if local else 'no local data: showing synthetic samples'})")
+    print(f"Samples only:    http://127.0.0.1:{args.port}/?source=synthetic")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

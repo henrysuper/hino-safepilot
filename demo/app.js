@@ -24,11 +24,13 @@ class StaticJsonProvider extends DataProvider {
   }
 }
 
-// ?source=local reads private views exported by `hino-analytics export-demo`, served
-// only by scripts/serve_demo.py. Driving replays use exported timelines when available.
+// Data source is detected automatically: the private views exported by
+// `hino-analytics export-demo` (served only by scripts/serve_demo.py) are used when present,
+// otherwise the bundled synthetic samples with a visible banner. `?source=synthetic` forces the
+// samples (public demos, screenshots); `?source=local` is accepted for old links.
 // One simulated driver is selected at a time; pre-drive, post-drive and history all follow it.
 const params = new URLSearchParams(window.location.search);
-const useLocalData = params.get("source") === "local";
+const forceSynthetic = params.get("source") === "synthetic";
 const syntheticProvider = new StaticJsonProvider();
 const localProvider = new StaticJsonProvider("./local-data", "local");
 const state = { source: "synthetic", index: null, driver: null, reports: new Map(), drivingSample: null };
@@ -1014,20 +1016,17 @@ async function selectDriver(driverId) {
 }
 
 async function loadDriverIndex() {
-  if (useLocalData) {
+  if (!forceSynthetic) {
     try {
       state.source = "local";
       return await loadView("drivers", "local");
     } catch (error) {
-      console.warn("Local driver views unavailable, falling back to synthetic", error);
+      console.info("No local driver views; showing synthetic samples", error);
+      state.missingLocal = true;
     }
   }
   state.source = "synthetic";
-  const index = await loadView("drivers", "synthetic");
-  if (useLocalData) {
-    index.mock_note = `尚未產生本機駕駛資料（請先執行 hino-analytics drivers 與 export-demo），整頁改用 Synthetic Demo。${index.mock_note}`;
-  }
-  return index;
+  return loadView("drivers", "synthetic");
 }
 
 function showError() {
@@ -1056,6 +1055,7 @@ async function initialize() {
     renderDriving(driving);
     state.index = index;
     document.getElementById("local-banner").classList.toggle("hidden", state.source !== "local");
+    document.getElementById("data-source-banner").classList.toggle("hidden", !state.missingLocal);
     setText("drivers-mock-note", index.mock_note);
 
     const select = document.getElementById("driver-select");

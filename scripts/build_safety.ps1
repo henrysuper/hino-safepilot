@@ -121,6 +121,6 @@ Say ""
 Say "== 全部完成：$drivers 位虛擬駕駛的資料已產生 ==" "Green"
 if (-not $doRoad) { Say "（行後報告不會有「路況公平比較」）" "Yellow" }
 if (-not $doAlerts) { Say "（行駛中頁面會顯示 Synthetic 預覽，行後報告不會有 60 秒預測）" "Yellow" }
-Say "駕駛端：python scripts\serve_demo.py  ->  http://127.0.0.1:8000/?source=local"
+Say "駕駛端：python scripts\serve_demo.py  ->  http://127.0.0.1:8000"
 Say "後台：  .venv\Scripts\hino-fuel.exe serve --repo-root . --port 8765  ->  「安全分數報告」分頁"
 Say "完整紀錄：$Log"

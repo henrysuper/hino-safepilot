@@ -43,6 +43,12 @@
         <span id="driver-meta" class="driver-meta">—</span>
         <span class="microcopy">切換後，行前提醒、行後報告與安全歷史紀錄都會換成這位駕駛的資料。</span>
       </div>
+      <div id="data-source-banner" class="data-source-banner hidden" role="status">
+        <strong>目前顯示的是 2 位示範駕駛（假資料）</strong>
+        <span>這台電腦還沒有真實的駕駛資料。要看真實的虛擬駕駛與分數：在專案資料夾執行
+          <code>powershell -ExecutionPolicy Bypass -File scripts\build_safety.ps1</code>，
+          再用 <code>python scripts\serve_demo.py</code> 開啟網頁（不能用 <code>http.server</code>）。</span>
+      </div>
 
       <main>
         <div id="global-error" class="error-panel hidden" role="alert">

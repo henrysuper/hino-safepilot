@@ -237,8 +237,8 @@ python scripts/serve_demo.py
 瀏覽：
 
 ```text
-http://127.0.0.1:8000                 # Synthetic Data
-http://127.0.0.1:8000/?source=local   # 本機 HINO 分析結果（需先 score + drivers + export-demo）
+http://127.0.0.1:8000                    # 自動：有本機 HINO 分析結果就顯示，否則顯示示範資料
+http://127.0.0.1:8000/?source=synthetic   # 只顯示示範資料（對外展示用）
 ```
 
 本機模式的資料流程：

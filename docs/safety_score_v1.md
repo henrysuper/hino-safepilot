@@ -72,7 +72,7 @@ python -m hino_safepilot.analytics predrive  --trip-id <id>     # 行前提醒 J
 python -m hino_safepilot.analytics postdrive --trip-id <id>     # 行後分數 + 報告 JSON
 python -m hino_safepilot.analytics drivers                      # 對應虛擬駕駛（見第 5 節）
 python -m hino_safepilot.analytics export-demo                  # 每位駕駛一個 demo 檔
-python scripts/serve_demo.py                                    # http://127.0.0.1:8000/?source=local
+python scripts/serve_demo.py                                    # http://127.0.0.1:8000（自動使用本機資料）
 ```
 
 `score` 拒絕覆寫既有輸出；要重算請先刪除 `data/processed/safety_scores/`。若 `trip_summaries.jsonl` 是 V1.1 之前建立的（缺少 `lens_ward_off`／`smoking`），`score` 會停止並要求先刪除 `data/processed/analytics/` 重跑 `hino-analytics build`。

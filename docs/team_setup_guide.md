@@ -201,8 +201,8 @@ Remove-Item -Recurse -Force data\processed\analytics
 
 | 網址 | 內容 |
 |---|---|
-| http://127.0.0.1:8000/?source=local | 本機真實分析結果 |
-| http://127.0.0.1:8000 | Synthetic Data（對外展示用） |
+| http://127.0.0.1:8000 | 自動判斷：有本機真實分析結果就顯示；沒有則顯示 2 位示範駕駛並在上方提示 |
+| http://127.0.0.1:8000/?source=synthetic | 只顯示示範資料（對外展示、截圖用） |
 
 在 PowerShell 按 `Ctrl + C` 關閉。
 
@@ -218,7 +218,8 @@ Remove-Item -Recurse -Force data\processed\analytics
 | `Run hino-analytics build first` | `data\processed\analytics` 沒放好，回到第 4 節 |
 | `Trip summaries do not track ['lens_ward_off', ...]` | 行程分析是舊版，做 6.0 |
 | `Parquet magic bytes not found` | 有 `desktop.ini`，執行第 4 節的清除指令 |
-| 網頁顯示「資料暫時無法取得」 | 確認網址有 `?source=local`，且 6.2 已執行 |
+| 網頁只有 2 位示範駕駛，上方有紅色提示 | 這台電腦還沒有真實資料：執行一鍵腳本，並用 `scripts\serve_demo.py` 開網頁 |
+| 網頁顯示「資料暫時無法取得」 | 確認是用 `scripts\serve_demo.py` 開啟，且一鍵腳本已成功 |
 | `Address already in use` | 改用 `scripts\serve_demo.py --port 8001`，網址改成 8001 |
 | `py` 不是可辨識的指令 | Python 安裝時未勾選 PATH，請重新安裝 |
 
