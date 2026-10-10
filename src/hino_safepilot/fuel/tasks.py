@@ -54,11 +54,15 @@ class DriverChoice:
 
 class TaskPlanner:
     def __init__(self, predictor, route_source, habitual_routes: dict | None = None, avoid_toll_candidates: bool = True,
-                 familiar_router=None, stop_idle: dict | None = None):
+                 familiar_router=None, stop_idle: dict | None = None,
+                 safety_by_driver: dict | None = None, safety_policy=None):
         """route_source: object with ``routes(key, origin, destination, avoid_tollways=False)`` (e.g. CachedOrs).
 
         familiar_router: LocalRouter with fleet-familiar grids set (adds a "車隊熟悉路線" candidate).
         stop_idle: {"rate_l_per_h": {type: L/h}, "engine_on_share": {type: share}} for idling fuel during dwell.
+        safety_by_driver: driver_id -> safety summary (average/recent/trend) for the driver-safety gate;
+            empty/None makes the safety layer a no-op.
+        safety_policy: SafetyPolicy thresholds; None uses defaults.
         """
 
         self.predictor = predictor
@@ -67,6 +71,8 @@ class TaskPlanner:
         self.avoid_toll_candidates = avoid_toll_candidates
         self.familiar_router = familiar_router
         self.stop_idle = stop_idle or {}
+        self.safety_by_driver = safety_by_driver or {}
+        self.safety_policy = safety_policy
 
     # ------------------------------------------------------------------ candidates
     def leg_candidates(self, a: Fence, b: Fence) -> tuple[list[CandidateRoute], list[str]]:
@@ -204,19 +210,26 @@ class TaskPlanner:
                 "leg_fuel_L": [round(v, 2) for v in per_leg], "stop_idle_fuel_L": round(idle_l, 2),
             })
         options.sort(key=lambda o: o["predicted_fuel_L"])
-        # Vehicle condition first, fuel second: an optional health gate re-ranks the fuel-sorted
-        # options by road-condition grade (block / caution / ok). Default: no gate (unchanged).
+        # Dispatch priority: fuel -> vehicle condition -> driver safety.
+        # 1) optional health gate re-ranks by road-condition grade -> dispatch_fuel_L.
+        # 2) optional driver-safety gate adds a driver-safety cost on top -> dispatch_score.
+        # Both default to no-op (unchanged) when their data/policy is absent.
         distance_km = round(sum(r[0][r[1]]["route"].distance_km for r in results), 1)
-        health_sort_key = "predicted_fuel_L"
+        sort_key = "predicted_fuel_L"
         policy = getattr(p, "health_policy", None)
         if policy is not None:
             from .dispatch_health import apply_health_gate
             options = apply_health_gate(options, p.artifacts.health, distance_km, policy=policy)
-            health_sort_key = "dispatch_fuel_L"
+            sort_key = "dispatch_fuel_L"
+        if self.safety_by_driver:
+            from .dispatch_safety import apply_safety_gate
+            options = apply_safety_gate(options, self.safety_by_driver, distance_km,
+                                        policy=self.safety_policy, base_key=sort_key)
+            sort_key = "dispatch_score"
         personal = any(isinstance(d.profile, DriverProfile) for _, d in pairs)
         compared = len(options)
         if personal:
-            options = match_unique(options, sort_key=health_sort_key)  # a truck has one driver at a time, a driver one truck
+            options = match_unique(options, sort_key=sort_key)  # a truck has one driver at a time, a driver one truck
         return {
             "model_version": p.meta["model_version"], "depart_time": depart.isoformat(), "arrive_time": end.isoformat(),
             "total_minutes": round((end - depart).total_seconds() / 60), "distance_km": distance_km,

@@ -358,7 +358,8 @@ def match_unique(options: list[dict], sort_key: str = "predicted_fuel_L") -> lis
     excluded options (health_excluded) are placed last."""
 
     def key(o: dict):
-        return (bool(o.get("health_excluded", False)), o.get(sort_key, o["predicted_fuel_L"]))
+        return (bool(o.get("health_excluded", False)), bool(o.get("safety_excluded", False)),
+                o.get(sort_key, o["predicted_fuel_L"]))
 
     used_drivers, used_vehicles, out = set(), set(), []
     for option in sorted(options, key=key):

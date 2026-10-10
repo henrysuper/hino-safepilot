@@ -1,0 +1,12 @@
+{
+  "_comment": "派車『駕駛安全』門檻設定（可選）。缺此檔時 dispatch_safety.SafetyPolicy 用內建預設。安全分 0-100，越高越安全。",
+  "mode": "absolute",
+  "block_score": 60.0,
+  "caution_score": 75.0,
+  "block_quantile": 0.10,
+  "caution_quantile": 0.30,
+  "caution_penalty_pct": { "light": 3.0, "standard": 6.0, "heavy": 12.0 },
+  "recent_decline_points": 7.0,
+  "recent_decline_extra_pct": 4.0,
+  "block_hard_exclude": true
+}

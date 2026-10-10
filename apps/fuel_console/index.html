@@ -3,28 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>油耗預測與發派系統｜檢驗主控台</title>
+  <title>智慧車隊油耗派遣平台</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=rb1">
 </head>
 <body>
 <header>
-  <h1>油耗預測與發派系統 <small>本機檢驗主控台</small></h1>
+  <h1>智慧車隊油耗派遣平台 <small>Fleet Fuel Dispatch Intelligence</small></h1>
   <nav role="tablist" aria-label="功能">
-    <button type="button" role="tab" aria-selected="true" data-tab="dispatch">發派預測</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="smart">智慧派車</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="backtest">真實行程回測</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="scores">油耗分數報告</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="safety">安全分數報告</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="drivers">虛擬駕駛</button>
-    <button type="button" role="tab" aria-selected="false" data-tab="model">模型驗證</button>
+    <button type="button" role="tab" aria-selected="true" data-tab="dispatch">智慧派車與發派預測</button>
   </nav>
 </header>
 <p id="status" role="status" aria-live="polite"></p>
 
 <main>
   <section id="tab-dispatch" class="tab" role="tabpanel">
+    <h2 class="view-title">多站發派預測</h2>
+    <p class="hint">規劃多站點配送路線，比較該車系「車 × 駕駛」組合，建議最省油的派法。</p>
     <div class="split">
       <form id="dispatch-form" class="panel">
         <h2>發派任務</h2>
@@ -43,13 +39,12 @@
         <div id="dispatch-result"></div>
       </div>
     </div>
-  </section>
 
-  <section id="tab-smart" class="tab" role="tabpanel" hidden>
+    <h2 class="view-title">智慧派車（單程 A→B）</h2>
+    <p class="hint">選起點、終點與車系，系統比較該車系所有車，推薦最佳車輛並給出理由。以車況為主、油耗為輔。</p>
     <div class="split">
       <form id="smart-form" class="panel">
-        <h2>智慧派車（單程 A→B）</h2>
-        <p class="hint">選起點、終點與車系，系統比較該車系所有車，推薦最佳車輛並給出理由。以車況為主、油耗為輔。</p>
+        <h2>單程推薦</h2>
         <label>起點圍籬 <select id="smart-origin"></select></label>
         <label>終點圍籬 <select id="smart-destination"></select></label>
         <label>日期 <input id="smart-date" type="date" required></label>
@@ -66,43 +61,10 @@
       </div>
     </div>
   </section>
-
-  <section id="tab-backtest" class="tab" role="tabpanel" hidden>
-    <div class="panel"><h2>圍籬對圍籬測試</h2><div id="fence-summary"></div><div id="fence-table"></div></div>
-    <div class="panel"><h2>真實行程回測（任意起訖點）</h2><div id="backtest-summary"></div></div>
-    <div class="split">
-      <div class="panel grow"><div id="backtest-table"></div></div>
-      <div class="panel grow"><h3 id="backtest-title">點選左表一趟行程查看路線</h3><div id="backtest-detail"></div></div>
-    </div>
-  </section>
-
-  <section id="tab-scores" class="tab" role="tabpanel" hidden>
-    <div class="panel"><h2>測試期油耗分數</h2><div id="score-summary"></div></div>
-    <div class="split">
-      <div class="panel grow"><div id="score-table"></div></div>
-      <div class="panel grow"><h3>行程報告</h3><div id="report"></div></div>
-    </div>
-  </section>
-
-  <section id="tab-safety" class="tab" role="tabpanel" hidden>
-    <div id="safety-overview" class="panel no-print"><p class="hint">載入中…</p></div>
-    <div class="split">
-      <div class="panel grow no-print"><h3>駕駛安全總表</h3><div id="safety-filter"></div><div id="safety-table"></div></div>
-      <div class="panel grow"><div id="safety-report"><p class="hint">點選左側駕駛或關注名單，查看完整安全報告與歷史紀錄。</p></div></div>
-    </div>
-  </section>
-
-  <section id="tab-drivers" class="tab" role="tabpanel" hidden>
-    <div id="drivers-view"></div>
-  </section>
-
-  <section id="tab-model" class="tab" role="tabpanel" hidden>
-    <div id="model-view"></div>
-  </section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="app.js"></script>
+<script src="app.js?v=rb2"></script>
 </body>
 </html>

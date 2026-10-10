@@ -84,6 +84,34 @@ class ConsoleState:
                         if profiles.is_file() else {})
         plates = paths.output_root / "artifacts" / "mock_plates.json"
         self.plates = json.loads(plates.read_text(encoding="utf-8"))["plates"] if plates.is_file() else {}
+        # Driver-safety gate (優先序：油耗 -> 車況 -> 駕駛安全). Optional data; no-op when absent.
+        from .dispatch_safety import SafetyPolicy
+        safety_policy_path = paths.repo_root / "config" / "dispatch_safety_v1.json"
+        self.safety_policy = SafetyPolicy.load(safety_policy_path if safety_policy_path.is_file() else None)
+        self.safety_by_driver = self._load_driver_safety()
+
+    def _load_driver_safety(self) -> dict:
+        """driver_id -> {average_score, recent_average_score, previous_average_score, trend, series}.
+
+        Reads the optional exported safety views via analytics.console_safety.safety_overview.
+        Missing/unavailable -> empty dict, which makes the safety gate a no-op (dispatch unchanged).
+        """
+
+        try:
+            from hino_safepilot.analytics.console_safety import safety_overview
+
+            payload = safety_overview(self.paths.repo_root)
+            if not payload.get("available"):
+                return {}
+            out = {}
+            for row in payload.get("drivers", []):
+                did = row.get("driver_id")
+                if did:
+                    out[did] = {k: row.get(k) for k in
+                                ("average_score", "recent_average_score", "previous_average_score", "trend", "series")}
+            return out
+        except Exception:  # safety views are optional; never break dispatch
+            return {}
 
     def _report(self, name: str):
         path = self.paths.report_dir / name
@@ -188,10 +216,9 @@ class ConsoleState:
             idle_path = self.paths.output_root / "artifacts" / "stop_idle.json"
             stop_idle = json.loads(idle_path.read_text(encoding="utf-8")) if idle_path.is_file() else None
             planner = TaskPlanner(self.predictor, source, habitual, avoid_toll_candidates=self.config.ors.avoid_toll_candidate,
-                                  familiar_router=self.local_router(), stop_idle=stop_idle)
+                                  familiar_router=self.local_router(), stop_idle=stop_idle,
+                                  safety_by_driver=self.safety_by_driver, safety_policy=self.safety_policy)
             result = planner.plan(stops, [self.codes[v] for v in vehicles], drivers, depart, bool(body.get("live")))
-            if source.fallbacks:
-                result["notes"].insert(0, f"ORS 暫時無法使用（多半是免費額度用完），{source.fallbacks} 段改用本機 OpenStreetMap 路網規劃（不含大型車限制）。")
         for option in result["options"]:
             option["vehicle_id"] = self.aliases[option["vehicle_id"]]
             option["plate"] = self.plates.get(option["vehicle_id"])  # simulated plate (此為模擬資料)
@@ -235,7 +262,7 @@ class ConsoleState:
                 raise ValueError("depart_time is required (HH:MM)")
             depart_time = f"{date} {text}" if len(text) <= 5 else text
 
-        vehicle_codes, driver_types = self._dispatch_candidates(body)
+        vehicle_codes, driver_types, named_drivers = self._dispatch_candidates(body)
 
         with self.lock:
             # 候選路線先取出來（含幾何），順便拿到 ORS 掉線的 fallback 訊息。
@@ -256,11 +283,11 @@ class ConsoleState:
                 destination_name=destination.name,
             )
             # 把預先取得的候選路線餵進 predictor，避免重複呼叫 ORS。
+            # 具名模式(有駕駛名冊)：傳 named_drivers + 安全資料，讓智慧派車也比具名駕駛並接個人安全分數。
             decision = recommend(self.predictor, request, policy=getattr(self.predictor, "health_policy", None),
-                                 routes=routes)
+                                 routes=routes, drivers=named_drivers,
+                                 safety_by_driver=self.safety_by_driver, safety_policy=self.safety_policy)
             narration = self.narrator.dispatch_report(decision["facts"])
-            if source.fallbacks:
-                decision["notes"].insert(0, f"ORS 暫時無法使用（多半是免費額度用完），{source.fallbacks} 段改用本機 OpenStreetMap 路網規劃（不含大型車限制）。")
 
         # enabledCode -> alias (+ 模擬車牌)，瀏覽器只看別名。
         def to_alias(opt: dict) -> dict:
@@ -289,8 +316,16 @@ class ConsoleState:
         decision.pop("facts", None)  # facts 僅供理由生成，不外送（含內部標籤）
         return decision
 
-    def _dispatch_candidates(self, body: dict) -> tuple[list[str], list[str]]:
-        """單程派車候選：某車系的所有車（enabledCode）+ 要比較的駕駛類型名稱。"""
+    def _dispatch_candidates(self, body: dict) -> tuple[list[str], list[str], list[dict] | None]:
+        """單程派車候選。
+
+        回傳 (vehicle_codes, driver_types_to_predict, named_drivers)。
+        - 有虛擬駕駛名冊時（具名模式）：named_drivers 為該車系駕駛清單，
+          driver_types_to_predict 含這些駕駛對應到的所有風格類型（讓每位都有油耗基準）。
+        - 無名冊時（退路）：named_drivers=None，driver_types 來自 body（預設 normal）。
+        """
+
+        from .dispatch_advisor import STYLE_LABEL_TO_TYPE
 
         types = self.artifacts.vehicle_types
         try:
@@ -311,13 +346,26 @@ class ConsoleState:
             if not picked:
                 raise ValueError("vehicles 不屬於所選車系或不存在")
             of_type = picked
+
+        valid_types = set(self.predictor.artifacts.driver_types.names)
+        # 具名模式：有駕駛名冊就比該車系的具名駕駛。
+        roster = [d for d in self.drivers.values() if int(d.get("primary_type", 0)) == vehicle_type] if self.drivers else []
+        if roster:
+            named = [{"driver_id": d["driver_id"], "driver_name": d.get("driver_name"),
+                      "primary_type": d["primary_type"], "style_label": d.get("style_label")}
+                     for d in roster]
+            needed = {STYLE_LABEL_TO_TYPE.get(d.get("style_label"), "normal") for d in roster}
+            needed = {t if t in valid_types else "normal" for t in needed} or {"normal"}
+            return of_type, sorted(needed), named
+
+        # 退路：沒有名冊，用駕駛類型（原行為）。
         names = body.get("driver_types") or ["normal"]
-        unknown = [d for d in names if d not in self.predictor.artifacts.driver_types.names]
+        unknown = [d for d in names if d not in valid_types]
         if unknown:
             raise ValueError(f"unknown driver types: {unknown}")
         if not 1 <= len(names) <= 5:
             raise ValueError("choose 1-5 driver types")
-        return of_type, names
+        return of_type, names, None
 
     def _task_candidates(self, body: dict) -> tuple[list[str], list]:
         """Vehicles of the required type (aliases) and licensed virtual drivers (or driver types if no roster)."""

@@ -253,8 +253,7 @@ function taskRouteBlock(result) {
         <table><thead><tr><th class="l">候選路線</th><th>距離</th><th>時間</th><th>平均油耗</th></tr></thead><tbody>${list}</tbody></table>
       </details>`;
   }).join("");
-  return `<div class="tk-sec-title">智慧路線怎麼挑的</div>
-    <p class="hint">每段都比較多條候選路線（ORS、本機路網、車隊熟悉路線、慣用路線），選「平均預測油耗最低」那條。</p>${body}`;
+  return `<div class="tk-sec-title">智慧路線怎麼挑的</div>${body}`;
 }
 
 /** ③ fuel breakdown of the recommended pairing: per-leg driving + stop idle, with 80% interval. */
@@ -308,7 +307,9 @@ function renderTask(result, series) {
   html += result.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("");
   html += taskWhyBlock(result);
   const hasHealth = rows.some((r) => r.health_grade);
+  const hasSafety = rows.some((r) => r.safety_grade && r.safety_grade !== "unknown");
   const healthLabel = { ok: "良好", caution: "注意", block: "待檢修" };
+  const safetyLabel = { ok: "良好", caution: "注意", block: "偏低", unknown: "無資料" };
   const healthCol = {
     key: "health_grade", label: "車況",
     html: (r) => {
@@ -319,11 +320,25 @@ function renderTask(result, series) {
       return `<span class="tag ${cls}">${healthLabel[r.health_grade] || r.health_grade}</span>${score}${mark}`;
     },
   };
+  const safetyCol = {
+    key: "safety_grade", label: "駕駛安全",
+    html: (r) => {
+      if (!r.safety_grade || r.safety_grade === "unknown") return "–";
+      const cls = r.safety_grade === "ok" ? "llm" : "warn";
+      const score = r.safety_score != null ? `（${num(r.safety_score, 0)}）` : "";
+      const trend = r.safety_declining ? ' <span class="tag warn" title="近期退步">↓</span>' : "";
+      const mark = r.safety_excluded ? ' <span class="tag warn">不派</span>' : "";
+      return `<span class="tag ${cls}">${safetyLabel[r.safety_grade] || r.safety_grade}</span>${score}${trend}${mark}`;
+    },
+  };
+  // 最終排序成本：有安全層用 dispatch_score，否則車況層 dispatch_fuel_L，否則原始油耗。
+  const finalCost = (r) => (r.dispatch_score != null ? r.dispatch_score : (r.dispatch_fuel_L != null ? r.dispatch_fuel_L : r.predicted_fuel_L));
   const fuelCol = {
     key: "predicted_fuel_L", label: "預測油耗 (L)",
     html: (r) => {
-      const gated = r.dispatch_fuel_L != null && Math.abs(r.dispatch_fuel_L - r.predicted_fuel_L) > 0.01
-        ? ` <span class="tag warn" title="含車況風險成本">→ ${num(r.dispatch_fuel_L, 1)}</span>` : "";
+      const fc = finalCost(r);
+      const gated = fc != null && Math.abs(fc - r.predicted_fuel_L) > 0.01
+        ? ` <span class="tag warn" title="含車況＋駕駛安全風險成本">→ ${num(fc, 1)}</span>` : "";
       return `${num(r.predicted_fuel_L, 1)}${gated}${r.rank === 1 ? ' <span class="tag llm">建議</span>' : ""}${r.rank === rows.length && rows.length > 1 ? ' <span class="tag warn">最耗</span>' : ""}`;
     },
   };
@@ -334,12 +349,12 @@ function renderTask(result, series) {
     { key: "driver_name", label: "駕駛", cls: "l" },
   ];
   if (hasHealth) cols.push(healthCol);
+  if (hasSafety) cols.push(safetyCol);
   cols.push(fuelCol);
-  html += `<div class="tk-sec-title">車 × 駕駛 排名（含車況風險成本）</div>`;
+  const rankTitle = hasSafety ? "車 × 駕駛 排名（含車況＋駕駛安全風險成本）" : "車 × 駕駛 排名（含車況風險成本）";
+  html += `<div class="tk-sec-title">${rankTitle}</div>`;
   html += table(rows.map((r, i) => ({ ...r, rank: i + 1 })), cols,
-    { rowClass: (r) => (r.health_excluded ? "warn-row" : r.rank === 1 ? "best" : "") });
-  html += `<p class="hint">派車以車況為主、油耗為輔：車況「待檢修」的車在長途任務會被排除，「注意」的車會加計車況風險成本後再比油耗。
-    每台車只配一位駕駛。駕駛與車牌為模擬資料；油耗由模型依路線、時段、車況與駕駛過去在各種道路的行為預測。</p>`;
+    { rowClass: (r) => ((r.health_excluded || r.safety_excluded) ? "warn-row" : r.rank === 1 ? "best" : "") });
   // explainability blocks
   html += taskFuelBreakdown(result);
   html += taskRouteBlock(result);
@@ -1021,8 +1036,7 @@ async function main() {
     state.meta = await api("/api/meta");
     renderForm();
     renderSmartForm();
-    renderModel();
-    status(`發派模型 ${(state.meta.dispatch_model || {}).model_version || "–"}｜分數基準模型 ${state.meta.model.model_version}｜報告文字：${state.meta.llm_provider === "gemini" ? "Gemini" : "固定範本"}`);
+    status("");
   } catch (err) { status(`載入失敗：${err.message}`, true); }
 }
 
