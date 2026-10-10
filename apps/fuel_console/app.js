@@ -1036,8 +1036,7 @@ async function main() {
     state.meta = await api("/api/meta");
     renderForm();
     renderSmartForm();
-    renderModel();
-    status(`發派模型 ${(state.meta.dispatch_model || {}).model_version || "–"}｜分數基準模型 ${state.meta.model.model_version}｜報告文字：${state.meta.llm_provider === "gemini" ? "Gemini" : "固定範本"}`);
+    status("");
   } catch (err) { status(`載入失敗：${err.message}`, true); }
 }
 
