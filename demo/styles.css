@@ -232,7 +232,7 @@ main { padding: 42px 0 54px; }
 .chart-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
 .chart-legend i.line { width: 16px; height: 2px; border-radius: 0; background: var(--charcoal); vertical-align: 3px; }
 .chart-legend i.alert { background: var(--red); }
-.chart-legend i.event { background: var(--amber); border-radius: 2px; }
+.chart-legend i.event { width: 0; height: 0; border-radius: 0; background: none; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid var(--amber); }
 .chart-legend i.dash { width: 16px; height: 0; border-top: 2px dashed var(--red); border-radius: 0; vertical-align: 3px; }
 .player { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .play-btn { padding: 10px 18px; border: 0; border-radius: 12px; background: var(--charcoal); color: white; font-weight: 850; cursor: pointer; }
